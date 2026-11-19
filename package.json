@@ -1,0 +1,38 @@
+{
+  "name": "sanfen-todo",
+  "description": "A personal mobile todo app for today, long-term and secondary tasks.",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.25.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@expo/metro-runtime": "~58.0.17",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.119.2",
+    "expo": "~58.0.26",
+    "expo-auth-session": "~58.0.19",
+    "expo-linear-gradient": "~58.0.4",
+    "expo-linking": "~58.0.17",
+    "expo-secure-store": "~58.0.3",
+    "expo-status-bar": "~58.0.5",
+    "expo-web-browser": "~58.1.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-url-polyfill": "^3.0.0",
+    "react-native-web": "~0.21.4"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "typescript": "~6.0.3"
+  }
+}

@@ -1,0 +1,124 @@
+import { colors } from './theme';
+import {
+  TASK_CATEGORIES,
+  type Task,
+  type TaskCategory,
+  type TaskRow,
+} from './types';
+
+export const CATEGORY_META = {
+  today: {
+    label: '当天',
+    hint: '今天要完成',
+    color: colors.today,
+    softColor: colors.todaySoft,
+    icon: 'sunny-outline' as const,
+  },
+  longTerm: {
+    label: '长期',
+    hint: '持续推进',
+    color: colors.longTerm,
+    softColor: colors.longTermSoft,
+    icon: 'leaf-outline' as const,
+  },
+  secondary: {
+    label: '次重要',
+    hint: '有空再做',
+    color: colors.secondary,
+    softColor: colors.secondarySoft,
+    icon: 'bookmark-outline' as const,
+  },
+} satisfies Record<
+  TaskCategory,
+  {
+    label: string;
+    hint: string;
+    color: string;
+    softColor: string;
+    icon: 'sunny-outline' | 'leaf-outline' | 'bookmark-outline';
+  }
+>;
+
+export function isTaskCategory(value: unknown): value is TaskCategory {
+  return (
+    typeof value === 'string' &&
+    (TASK_CATEGORIES as readonly string[]).includes(value)
+  );
+}
+
+export function taskFromRow(row: TaskRow): Task {
+  return {
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    isCompleted: row.is_completed,
+    createdAt: row.created_at,
+    completedAt: row.completed_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function createLocalTask(
+  title: string,
+  category: TaskCategory,
+): Task {
+  const now = new Date().toISOString();
+
+  return {
+    id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
+    title: title.trim(),
+    category,
+    isCompleted: false,
+    createdAt: now,
+    completedAt: null,
+    updatedAt: now,
+  };
+}
+
+export function sortTasks(tasks: Task[]): Task[] {
+  return [...tasks].sort((left, right) => {
+    if (left.isCompleted !== right.isCompleted) {
+      return left.isCompleted ? 1 : -1;
+    }
+
+    return (
+      new Date(right.createdAt).getTime() -
+      new Date(left.createdAt).getTime()
+    );
+  });
+}
+
+export function getTaskStats(tasks: Task[]) {
+  const completed = tasks.filter((task) => task.isCompleted).length;
+  const total = tasks.length;
+
+  return {
+    total,
+    completed,
+    remaining: total - completed,
+    percentage: total === 0 ? 0 : Math.round((completed / total) * 100),
+  };
+}
+
+export function getTodayLabel(date = new Date()): string {
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  }).format(date);
+}
+
+export function getGreeting(date = new Date()): string {
+  const hour = date.getHours();
+
+  if (hour < 6) return '夜深了';
+  if (hour < 11) return '早上好';
+  if (hour < 14) return '中午好';
+  if (hour < 18) return '下午好';
+  return '晚上好';
+}
+
+export function getDisplayName(email: string | undefined): string {
+  if (!email) return '我的清单';
+  return email.split('@')[0];
+}

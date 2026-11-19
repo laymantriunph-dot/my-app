@@ -8,11 +8,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "backgroundColor": "#F6F1E8",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F6F1E8"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.laymantriunph.sanfentodo"
@@ -31,7 +26,21 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F6F1E8"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4276b6de-ba65-4836-89e0-86043f8ec995"
+      }
+    }
   }
 }

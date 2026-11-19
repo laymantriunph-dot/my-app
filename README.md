@@ -25,13 +25,6 @@ npm install
 npx expo start
 ```
 
-也可以使用 pnpm：
-
-```bash
-pnpm install
-pnpm start
-```
-
 使用手机上的 Expo Go 扫描终端二维码即可预览。没有配置登录服务时，可以先点击“先在本机使用”，所有核心功能都能体验。
 
 ## 配置 Supabase

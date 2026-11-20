@@ -24,7 +24,7 @@ export function TaskItem({
     task.category === 'today' ? priorityMeta.color : meta.color;
   const categoryLabel =
     task.category === 'today'
-      ? `当天 · ${priorityMeta.label}`
+      ? `${meta.label} · ${priorityMeta.label}`
       : meta.label;
 
   return (

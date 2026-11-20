@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,12 +17,13 @@ import {
 } from 'react-native-safe-area-context';
 
 import { useArchives } from '../hooks/useArchives';
+import { useMotivation } from '../hooks/useMotivation';
 import type { TaskState } from '../hooks/useTasks';
 import type { AuthUser } from '../lib/supabase';
 import {
   CATEGORY_META,
   getDisplayName,
-  getGreeting,
+  getLocalDateKey,
   getTaskStats,
   getTodayLabel,
   PRIORITY_META,
@@ -35,6 +36,7 @@ import {
   type TaskCategory,
 } from '../types';
 import { ArchiveModal } from './ArchiveModal';
+import { MotivationModal } from './MotivationModal';
 import { RecordScreen } from './RecordScreen';
 import { TaskComposer } from './TaskComposer';
 import { TaskItem } from './TaskItem';
@@ -64,21 +66,40 @@ export function HomeScreen({
 }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   const archiveState = useArchives(user?.id);
+  const motivationState = useMotivation(user?.id);
   const [activeSection, setActiveSection] = useState<MainSection>('energy');
   const [activeCategory, setActiveCategory] =
     useState<TaskCategory>('today');
   const [composerVisible, setComposerVisible] = useState(false);
   const [archiveVisible, setArchiveVisible] = useState(false);
+  const [motivationVisible, setMotivationVisible] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
-  const stats = getTaskStats(
-    taskState.tasks.filter((task) => task.category === 'today'),
+  const [todayKey, setTodayKey] = useState(getLocalDateKey());
+  const todayTasks = taskState.tasks.filter(
+    (task) =>
+      task.category === 'today' &&
+      (!task.isCompleted ||
+        (task.completedAt && getLocalDateKey(task.completedAt) === todayKey)),
   );
+  const stats = getTaskStats(todayTasks);
   const visibleTasks = useMemo(
     () =>
       sortTasks(
-        taskState.tasks.filter((task) => task.category === activeCategory),
+        taskState.tasks.filter((task) => {
+          if (task.category !== activeCategory) return false;
+          if (activeCategory === 'today') {
+            return (
+              !task.isCompleted ||
+              Boolean(
+                task.completedAt &&
+                  getLocalDateKey(task.completedAt) === todayKey,
+              )
+            );
+          }
+          return !task.isCompleted;
+        }),
       ),
-    [activeCategory, taskState.tasks],
+    [activeCategory, taskState.tasks, todayKey],
   );
   const pendingTasks = visibleTasks.filter((task) => !task.isCompleted);
   const completedTasks = visibleTasks.filter((task) => task.isCompleted);
@@ -109,7 +130,7 @@ export function HomeScreen({
       : [
           {
             key: 'continue',
-            title: '继续清单',
+            title: '遐筹清单',
             hint: CATEGORY_META.longTerm.hint,
             color: CATEGORY_META.longTerm.color,
             softColor: CATEGORY_META.longTerm.softColor,
@@ -157,21 +178,29 @@ export function HomeScreen({
     );
   }
 
-  async function saveCurrentTasks() {
-    if (visibleTasks.length === 0) {
-      Alert.alert('当前清单为空', '先添加一两条待办，再保存为历史快照。');
-      return;
-    }
+  async function toggleTaskAndArchive(task: Task) {
+    const wasCompleted = task.isCompleted;
+    const completedAt = new Date().toISOString();
+    const updated = await taskState.toggleTask(task);
 
-    const saved = await archiveState.saveArchive(
-      activeCategory,
-      visibleTasks,
-    );
+    if (!updated) return;
 
-    if (saved) {
-      Alert.alert('已保存', '这份清单已存入历史，当前待办不会改变。');
+    if (wasCompleted) {
+      if (task.completedAt) {
+        await archiveState.unrecordCompletedTask(task, task.completedAt);
+      }
+    } else {
+      await archiveState.recordCompletedTask(task, completedAt);
     }
   }
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTodayKey(getLocalDateKey());
+    }, 60_000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const listHeader = (
     <View>
@@ -189,7 +218,7 @@ export function HomeScreen({
         <View style={styles.successCopy}>
           <Text style={styles.successTitle}>The Way Of Success</Text>
           <Text style={styles.successHint}>
-            查看保存过的清单与当天分类记录
+            朝计与遐筹的完成记录
           </Text>
         </View>
         <View style={styles.successCount}>
@@ -202,7 +231,17 @@ export function HomeScreen({
 
       <View style={styles.greetingBlock}>
         <Text style={styles.dateLabel}>{getTodayLabel()}</Text>
-        <Text style={styles.greeting}>{getGreeting()}，{displayName}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="自定义今日寄语"
+          onPress={() => setMotivationVisible(true)}
+          style={styles.greetingRow}
+        >
+          <Text style={styles.greeting}>{motivationState.motivation}</Text>
+          <View style={styles.editGreetingButton}>
+            <Ionicons name="pencil-outline" size={14} color={colors.inkFaint} />
+          </View>
+        </Pressable>
         <Text style={styles.greetingHint}>
           {stats.remaining === 0 && stats.total > 0
             ? '今天的清单已经全部完成。'
@@ -210,45 +249,49 @@ export function HomeScreen({
         </Text>
       </View>
 
-      <LinearGradient
-        colors={['#24372E', '#395B4B']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.progressCard}
-      >
+      {activeCategory === 'today' ? (
+        <LinearGradient
+          colors={['#354950', '#52666B']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.progressCard}
+        >
+          <View style={styles.progressPattern}>
+            <View style={styles.progressPatternRing} />
+            <View style={styles.progressPatternDot} />
+          </View>
         <View style={styles.progressCopy}>
-          <Text style={styles.progressEyebrow}>TODAY'S PROGRESS</Text>
+          <Text style={styles.progressEyebrow}>朝计 · TODAY</Text>
           <View style={styles.progressNumberRow}>
             <Text style={styles.progressNumber}>{stats.percentage}</Text>
             <Text style={styles.progressUnit}>%</Text>
           </View>
           <Text style={styles.progressCaption}>
-            已完成 {stats.completed} / {stats.total || 0} 项
+            完成 {stats.completed} 项 · 剩余 {stats.remaining} 项
           </Text>
-        </View>
-        <View style={styles.progressVisual}>
-          <View style={styles.progressRingOuter}>
-            <View style={styles.progressRingInner}>
-              <Ionicons
-                name={stats.percentage === 100 ? 'checkmark' : 'sparkles-outline'}
-                size={28}
-                color={stats.percentage === 100 ? '#BFE8D5' : colors.white}
-              />
-            </View>
-          </View>
-          <View
-            style={[
-              styles.progressOrb,
-              { opacity: 0.25 + stats.percentage / 100 / 2 },
-            ]}
-          />
         </View>
         <View style={styles.progressTrack}>
           <View
             style={[styles.progressFill, { width: `${stats.percentage}%` }]}
           />
         </View>
-      </LinearGradient>
+        </LinearGradient>
+      ) : (
+        <View style={styles.reflectionCard}>
+          <View style={styles.reflectionIcon}>
+            <Ionicons name="infinite-outline" size={22} color="#E8E0CB" />
+          </View>
+          <View style={styles.reflectionCopy}>
+            <Text style={styles.reflectionEyebrow}>遐筹 · LONG VIEW</Text>
+            <Text style={styles.reflectionTitle}>
+              不急着完成，但始终向前。
+            </Text>
+            <Text style={styles.reflectionHint}>
+              {pendingTasks.length} 项遐筹正在蓄势
+            </Text>
+          </View>
+        </View>
+      )}
 
       <View style={styles.categoryCards}>
         {ACTIVE_TASK_CATEGORIES.map((key) => {
@@ -299,25 +342,14 @@ export function HomeScreen({
       </View>
 
       <View style={styles.todoTools}>
-        <Pressable
-          accessibilityRole="button"
-          disabled={visibleTasks.length === 0}
-          onPress={() => void saveCurrentTasks()}
-          style={({ pressed }) => [
-            styles.saveListButton,
-            visibleTasks.length === 0 && styles.toolDisabled,
-            pressed && styles.toolPressed,
-          ]}
-        >
-          <Ionicons name="archive-outline" size={17} color={colors.ink} />
-          <Text style={styles.saveListText}>保存当前清单</Text>
-          <Text style={styles.saveListCount}>{visibleTasks.length} 项</Text>
-        </Pressable>
-        <View style={styles.activeCategoryPill}>
-          <Text style={styles.activeCategoryPillText}>
-            {activeMeta.label}
-          </Text>
-        </View>
+        <Ionicons
+          name="sparkles-outline"
+          size={15}
+          color={colors.inkFaint}
+        />
+        <Text style={styles.autoArchiveText}>
+          {activeMeta.label}任务完成后会自动保存在 The Way Of Success
+        </Text>
       </View>
 
       {taskState.error || archiveState.error ? (
@@ -345,7 +377,7 @@ export function HomeScreen({
       <View style={styles.listHeading}>
         <View>
           <Text style={styles.listTitle}>
-            {activeCategory === 'today' ? '今天，先做主要的' : '继续积累'}
+            {activeCategory === 'today' ? '今天，先做主要的' : '遐筹，慢慢积累'}
           </Text>
           <Text style={styles.listDescription}>{activeMeta.hint}</Text>
         </View>
@@ -416,7 +448,7 @@ export function HomeScreen({
                   <TaskItem
                     task={item}
                     disabled={taskState.isMutating}
-                    onToggle={() => void taskState.toggleTask(item)}
+                    onToggle={() => void toggleTaskAndArchive(item)}
                     onDelete={() => confirmDelete(item)}
                   />
                 )}
@@ -460,7 +492,7 @@ export function HomeScreen({
                       <Text style={styles.sectionEmptyText}>
                         {activeCategory === 'today'
                           ? `暂时没有${section.title}待办`
-                          : '暂时没有继续事项'}
+                          : '暂时没有遐筹事项'}
                       </Text>
                     </View>
                   ) : (
@@ -488,7 +520,7 @@ export function HomeScreen({
                         />
                       </View>
                       <Text style={styles.emptyTitle}>
-                        正在整理今天的蓄能清单…
+                        正在整理今天的朝计清单…
                       </Text>
                     </View>
                   )
@@ -534,7 +566,7 @@ export function HomeScreen({
                                 key={task.id}
                                 task={task}
                                 disabled={taskState.isMutating}
-                                onToggle={() => void taskState.toggleTask(task)}
+                                onToggle={() => void toggleTaskAndArchive(task)}
                                 onDelete={() => confirmDelete(task)}
                               />
                             ))}
@@ -627,7 +659,7 @@ export function HomeScreen({
                 activeSection === 'energy' && styles.navLabelActive,
               ]}
             >
-              蓄能
+              朝计
             </Text>
           </Pressable>
 
@@ -675,14 +707,19 @@ export function HomeScreen({
 
       <ArchiveModal
         visible={archiveVisible}
-        category={activeCategory}
-        currentTasks={visibleTasks}
         archives={archiveState.archives}
         isLoading={archiveState.isLoading}
         error={archiveState.error}
         onClose={() => setArchiveVisible(false)}
-        onSave={archiveState.saveArchive}
-        onDelete={archiveState.removeArchive}
+        onDelete={archiveState.removeArchives}
+      />
+
+      <MotivationModal
+        visible={motivationVisible}
+        value={motivationState.motivation}
+        defaultValue={motivationState.defaultMotivation}
+        onClose={() => setMotivationVisible(false)}
+        onSave={motivationState.setMotivation}
       />
     </SafeAreaView>
   );
@@ -796,6 +833,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.8,
   },
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  editGreetingButton: {
+    width: 30,
+    height: 30,
+    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: colors.surfaceMuted,
+  },
   greetingHint: {
     marginTop: 7,
     color: colors.inkSoft,
@@ -813,7 +864,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   progressEyebrow: {
-    color: '#B9CEC4',
+    color: '#D2DCDD',
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 1.7,
@@ -886,12 +937,78 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.13)',
   },
   progressFill: {
     height: '100%',
     borderRadius: 3,
-    backgroundColor: colors.accent,
+    backgroundColor: '#D8CBAE',
+  },
+  progressPattern: {
+    position: 'absolute',
+    right: 18,
+    top: 20,
+    width: 104,
+    height: 104,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressPatternRing: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    transform: [{ rotate: '-16deg' }],
+  },
+  progressPatternDot: {
+    position: 'absolute',
+    top: 7,
+    right: 10,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#D8CBAE',
+  },
+  reflectionCard: {
+    minHeight: 124,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    borderRadius: radii.lg,
+    backgroundColor: '#29332F',
+    overflow: 'hidden',
+    ...shadows.card,
+  },
+  reflectionIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  reflectionCopy: {
+    flex: 1,
+  },
+  reflectionEyebrow: {
+    color: '#BEB6A0',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  reflectionTitle: {
+    marginTop: 7,
+    color: '#F2EDE1',
+    fontSize: 17,
+    lineHeight: 24,
+    fontWeight: '700',
+  },
+  reflectionHint: {
+    marginTop: 5,
+    color: '#9FA9A3',
+    fontSize: 9,
   },
   categoryCards: {
     flexDirection: 'row',
@@ -939,7 +1056,9 @@ const styles = StyleSheet.create({
   todoTools: {
     marginTop: 14,
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    paddingHorizontal: 3,
   },
   saveListButton: {
     flex: 1,
@@ -982,6 +1101,12 @@ const styles = StyleSheet.create({
   },
   toolPressed: {
     opacity: 0.68,
+  },
+  autoArchiveText: {
+    flex: 1,
+    color: colors.inkFaint,
+    fontSize: 9,
+    lineHeight: 14,
   },
   successButton: {
     minHeight: 65,

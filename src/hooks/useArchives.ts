@@ -1,26 +1,34 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   deleteRemoteArchive,
   fetchRemoteArchives,
   insertRemoteArchive,
   readArchiveCache,
+  updateRemoteArchive,
   writeArchiveCache,
-  type TaskArchiveDraft,
 } from '../lib/activityRepository';
-import { getTodayLabel, CATEGORY_META } from '../taskUtils';
-import type { Task, TaskArchive, TaskCategory } from '../types';
+import {
+  CATEGORY_META,
+  getLocalDateKey,
+  getTodayLabel,
+} from '../taskUtils';
+import type { Task, TaskArchive } from '../types';
 
 export type ArchiveState = {
   archives: TaskArchive[];
   isLoading: boolean;
   error: string | null;
-  saveArchive: (
-    category: TaskCategory,
-    tasks: Task[],
+  recordCompletedTask: (
+    task: Task,
+    completedAt: string,
   ) => Promise<boolean>;
-  removeArchive: (archive: TaskArchive) => Promise<boolean>;
+  unrecordCompletedTask: (
+    task: Task,
+    completedAt: string,
+  ) => Promise<boolean>;
+  removeArchives: (archives: TaskArchive[]) => Promise<boolean>;
   clearError: () => void;
 };
 
@@ -40,6 +48,8 @@ function errorMessage(error: unknown) {
 export function useArchives(userId?: string): ArchiveState {
   const scope = userId ?? 'guest';
   const [archives, setArchives] = useState<TaskArchive[]>([]);
+  const archivesRef = useRef<TaskArchive[]>([]);
+  const completionLocks = useRef(new Set<string>());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +57,7 @@ export function useArchives(userId?: string): ArchiveState {
     (producer: (current: TaskArchive[]) => TaskArchive[]) => {
       setArchives((current) => {
         const next = producer(current);
+        archivesRef.current = next;
         void writeArchiveCache(scope, next);
         return next;
       });
@@ -60,6 +71,7 @@ export function useArchives(userId?: string): ArchiveState {
 
     try {
       const cached = await readArchiveCache(scope);
+      archivesRef.current = cached;
       setArchives(cached);
 
       if (!userId) return;
@@ -72,6 +84,8 @@ export function useArchives(userId?: string): ArchiveState {
           await insertRemoteArchive(userId, {
             title: archive.title,
             category: archive.category,
+            kind: archive.kind ?? 'manual',
+            recordDate: archive.recordDate ?? getLocalDateKey(),
             tasks: archive.tasks,
             taskCount: archive.taskCount,
             completedCount: archive.completedCount,
@@ -82,6 +96,7 @@ export function useArchives(userId?: string): ArchiveState {
       }
 
       setArchives(remote);
+      archivesRef.current = remote;
       await writeArchiveCache(scope, remote);
     } catch (loadError) {
       setError(errorMessage(loadError));
@@ -94,30 +109,67 @@ export function useArchives(userId?: string): ArchiveState {
     void load();
   }, [load]);
 
-  async function saveArchive(category: TaskCategory, tasks: Task[]) {
-    if (tasks.length === 0) return false;
-
+  async function recordCompletedTask(task: Task, completedAt: string) {
     setError(null);
-    const draft: TaskArchiveDraft = {
-      title: `${CATEGORY_META[category].label} · ${getTodayLabel()}`,
-      category,
-      tasks: tasks.map((task) => ({ ...task })),
-      taskCount: tasks.length,
-      completedCount: tasks.filter((task) => task.isCompleted).length,
+    const snapshot = archivesRef.current;
+    const recordDate = getLocalDateKey(completedAt);
+    const lockKey = `record:${task.id}:${recordDate}`;
+    if (completionLocks.current.has(lockKey)) return true;
+    completionLocks.current.add(lockKey);
+    const existing = archivesRef.current.find(
+      (archive) =>
+        archive.kind === 'completed' &&
+        archive.category === task.category &&
+        archive.recordDate === recordDate,
+    );
+    const completedTask: Task = {
+      ...task,
+      isCompleted: true,
+      completedAt,
     };
     const now = new Date().toISOString();
-    const optimistic: TaskArchive = {
-      ...draft,
-      id: `local-${Date.now().toString(36)}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`,
-      archivedAt: now,
-    };
-    commit((current) => [optimistic, ...current]);
+    let optimistic: TaskArchive;
+
+    if (existing) {
+      const nextTasks = [
+        completedTask,
+        ...existing.tasks.filter((item) => item.id !== task.id),
+      ];
+      optimistic = {
+        ...existing,
+        tasks: nextTasks,
+        taskCount: nextTasks.length,
+        completedCount: nextTasks.length,
+      };
+      commit((current) =>
+        current.map((archive) =>
+          archive.id === existing.id ? optimistic : archive,
+        ),
+      );
+    } else {
+      optimistic = {
+        id: `local-${Date.now().toString(36)}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`,
+        title: `${CATEGORY_META[task.category].label} · ${getTodayLabel(
+          new Date(completedAt),
+        )}`,
+        category: task.category,
+        kind: 'completed',
+        recordDate,
+        tasks: [completedTask],
+        taskCount: 1,
+        completedCount: 1,
+        archivedAt: now,
+      };
+      commit((current) => [optimistic, ...current]);
+    }
 
     try {
       if (userId) {
-        const saved = await insertRemoteArchive(userId, draft);
+        const saved = existing
+          ? await updateRemoteArchive(userId, optimistic)
+          : await insertRemoteArchive(userId, optimistic);
         commit((current) =>
           current.map((archive) =>
             archive.id === optimistic.id ? saved : archive,
@@ -126,27 +178,88 @@ export function useArchives(userId?: string): ArchiveState {
       }
       return true;
     } catch (saveError) {
-      commit((current) =>
-        current.filter((archive) => archive.id !== optimistic.id),
-      );
+      setArchives(snapshot);
+      archivesRef.current = snapshot;
+      await writeArchiveCache(scope, snapshot);
       setError(errorMessage(saveError));
       return false;
+    } finally {
+      completionLocks.current.delete(lockKey);
     }
   }
 
-  async function removeArchive(archive: TaskArchive) {
+  async function unrecordCompletedTask(task: Task, completedAt: string) {
     setError(null);
+    const snapshot = archivesRef.current;
+    const recordDate = getLocalDateKey(completedAt);
+    const lockKey = `unrecord:${task.id}:${recordDate}`;
+    if (completionLocks.current.has(lockKey)) return true;
+    completionLocks.current.add(lockKey);
+    const existing = archivesRef.current.find(
+      (archive) =>
+        archive.kind === 'completed' &&
+        archive.category === task.category &&
+        archive.recordDate === recordDate,
+    );
+    if (!existing) {
+      completionLocks.current.delete(lockKey);
+      return true;
+    }
+
+    const remainingTasks = existing.tasks.filter((item) => item.id !== task.id);
+    const shouldDelete = remainingTasks.length === 0;
+    const nextArchive: TaskArchive = {
+      ...existing,
+      tasks: remainingTasks,
+      taskCount: remainingTasks.length,
+      completedCount: remainingTasks.length,
+    };
     commit((current) =>
-      current.filter((item) => item.id !== archive.id),
+      shouldDelete
+        ? current.filter((archive) => archive.id !== existing.id)
+        : current.map((archive) =>
+            archive.id === existing.id ? nextArchive : archive,
+          ),
     );
 
     try {
       if (userId) {
-        await deleteRemoteArchive(userId, archive.id);
+        if (shouldDelete) {
+          await deleteRemoteArchive(userId, existing.id);
+        } else {
+          await updateRemoteArchive(userId, nextArchive);
+        }
+      }
+      return true;
+    } catch (updateError) {
+      setArchives(snapshot);
+      archivesRef.current = snapshot;
+      await writeArchiveCache(scope, snapshot);
+      setError(errorMessage(updateError));
+      return false;
+    } finally {
+      completionLocks.current.delete(lockKey);
+    }
+  }
+
+  async function removeArchives(archivesToRemove: TaskArchive[]) {
+    if (archivesToRemove.length === 0) return false;
+    setError(null);
+    const ids = new Set(archivesToRemove.map((archive) => archive.id));
+    const snapshot = archivesRef.current;
+    commit((current) => current.filter((archive) => !ids.has(archive.id)));
+
+    try {
+      if (userId) {
+        for (const archive of archivesToRemove) {
+          await deleteRemoteArchive(userId, archive.id);
+        }
       }
       return true;
     } catch (removeError) {
-      commit((current) => [archive, ...current]);
+      setArchives(snapshot);
+      archivesRef.current = snapshot;
+      await writeArchiveCache(scope, snapshot);
       setError(errorMessage(removeError));
       return false;
     }
@@ -156,8 +269,9 @@ export function useArchives(userId?: string): ArchiveState {
     archives,
     isLoading,
     error,
-    saveArchive,
-    removeArchive,
+    recordCompletedTask,
+    unrecordCompletedTask,
+    removeArchives,
     clearError: () => setError(null),
   };
 }

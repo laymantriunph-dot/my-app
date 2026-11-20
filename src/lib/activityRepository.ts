@@ -33,6 +33,8 @@ function archiveFromRow(row: TaskArchiveRow): TaskArchive {
     id: row.id,
     title: row.title,
     category: row.category,
+    kind: row.record_type,
+    recordDate: row.record_date,
     tasks: row.tasks,
     taskCount: row.task_count,
     completedCount: row.completed_count,
@@ -74,7 +76,7 @@ export async function fetchRemoteArchives(
   const { data, error } = await client
     .from('task_archives')
     .select(
-      'id,user_id,title,category,tasks,task_count,completed_count,archived_at',
+      'id,user_id,title,category,record_type,record_date,tasks,task_count,completed_count,archived_at',
     )
     .eq('user_id', userId)
     .order('archived_at', { ascending: false });
@@ -94,12 +96,41 @@ export async function insertRemoteArchive(
       user_id: userId,
       title: archive.title,
       category: archive.category,
+      record_type: archive.kind,
+      record_date: archive.recordDate,
       tasks: archive.tasks,
       task_count: archive.taskCount,
       completed_count: archive.completedCount,
     })
     .select(
-      'id,user_id,title,category,tasks,task_count,completed_count,archived_at',
+      'id,user_id,title,category,record_type,record_date,tasks,task_count,completed_count,archived_at',
+    )
+    .single();
+
+  if (error) throw error;
+  return archiveFromRow(data as TaskArchiveRow);
+}
+
+export async function updateRemoteArchive(
+  userId: string,
+  archive: TaskArchive,
+): Promise<TaskArchive> {
+  const client = getSupabase();
+  const { data, error } = await client
+    .from('task_archives')
+    .update({
+      title: archive.title,
+      category: archive.category,
+      record_type: archive.kind,
+      record_date: archive.recordDate,
+      tasks: archive.tasks,
+      task_count: archive.taskCount,
+      completed_count: archive.completedCount,
+    })
+    .eq('id', archive.id)
+    .eq('user_id', userId)
+    .select(
+      'id,user_id,title,category,record_type,record_date,tasks,task_count,completed_count,archived_at',
     )
     .single();
 

@@ -260,7 +260,7 @@ export function RecordScreen({ userId }: { userId?: string }) {
 
   function openDurationPicker() {
     if (status !== 'idle') {
-      Alert.alert('计时正在进行', '请先完成或重置计时，再调整倒计时长度。');
+      setImmersiveVisible(true);
       return;
     }
 
@@ -351,7 +351,9 @@ export function RecordScreen({ userId }: { userId?: string }) {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="调整倒计时长度"
+          accessibilityLabel={
+            status === 'idle' ? '调整倒计时长度' : '进入沉浸模式'
+          }
           onPress={openDurationPicker}
           style={styles.timerFace}
         >

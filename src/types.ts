@@ -34,6 +34,8 @@ export type TaskArchive = {
   id: string;
   title: string;
   category: TaskCategory;
+  kind: 'manual' | 'completed';
+  recordDate: string;
   tasks: Task[];
   taskCount: number;
   completedCount: number;
@@ -45,6 +47,8 @@ export type TaskArchiveRow = {
   user_id: string;
   title: string;
   category: TaskCategory;
+  record_type: 'manual' | 'completed';
+  record_date: string;
   tasks: Task[];
   task_count: number;
   completed_count: number;

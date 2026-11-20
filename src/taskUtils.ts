@@ -9,14 +9,14 @@ import {
 
 export const CATEGORY_META = {
   today: {
-    label: '当天',
+    label: '朝计',
     hint: '今天要完成',
     color: colors.today,
     softColor: colors.todaySoft,
     icon: 'sunny-outline' as const,
   },
   longTerm: {
-    label: '继续',
+    label: '遐筹',
     hint: '持续推进，不急着今天完成',
     color: colors.longTerm,
     softColor: colors.longTermSoft,
@@ -143,6 +143,21 @@ export function getTodayLabel(date = new Date()): string {
     day: 'numeric',
     weekday: 'long',
   }).format(date);
+}
+
+export function getLocalDateKey(value: string | Date = new Date()): string {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function isSameLocalDay(
+  value: string | Date,
+  reference: Date = new Date(),
+): boolean {
+  return getLocalDateKey(value) === getLocalDateKey(reference);
 }
 
 export function getGreeting(date = new Date()): string {

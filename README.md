@@ -2,15 +2,15 @@
 
 一个面向个人使用的手机待办 App。它把任务分成三个清晰层级：
 
-- **当天**：今天需要完成的事
-- **长期**：需要持续推进、没有当天截止压力的事
+- **朝计**：今天需要完成的事，并分为「主要 / 次要」
+- **遐筹**：需要持续推进、没有当天截止压力的事
 - **次重要**：有空时再处理的事
 
-当前版本分为「蓄能」与「记录」两个主栏目：
+当前版本分为「朝计」与「记录」两个主栏目：
 
-- **蓄能**：将当天待办分为「主要 / 次要」，将长期事项放入「继续」，保存历史清单快照，并且只在当天清单显示可展开的已完成区域。
+- **朝计**：将当天待办分为「主要 / 次要」，将长期事项放入「遐筹」，并且只在朝计清单显示当日可展开的已完成区域。
 - **记录**：点击中央计时圆设置倒计时，提供自定义倒计时和正计时，开始后自动进入全屏沉浸模式，并保存每次专注的时长、名称和时间。
-- **The Way Of Success**：查看过去保存的清单快照，保留原有分类。
+- **The Way Of Success**：完成事项自动按「朝计 / 遐筹」保存，可勾选记录后批量抹除。
 
 同时支持本地离线保存，以及 Google、Outlook、QQ 三种账号登录后的云端同步。
 
@@ -49,6 +49,7 @@ npm run build:web
    [`supabase/migrations/202611190001_create_tasks.sql`](supabase/migrations/202611190001_create_tasks.sql)
    [`supabase/migrations/202611200001_add_archives_and_focus_sessions.sql`](supabase/migrations/202611200001_add_archives_and_focus_sessions.sql)
    [`supabase/migrations/202611200002_refine_today_priorities.sql`](supabase/migrations/202611200002_refine_today_priorities.sql)
+   [`supabase/migrations/202611200003_auto_completion_history.sql`](supabase/migrations/202611200003_auto_completion_history.sql)
 
 3. 将 [`.env.example`](.env.example) 复制为 `.env`，填写 Project URL 和 Publishable key：
 

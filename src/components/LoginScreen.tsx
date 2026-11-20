@@ -70,7 +70,7 @@ export function LoginScreen({ auth, onStartLocal }: LoginScreenProps) {
             <Text style={styles.eyebrow}>A QUIET PLACE TO FOCUS</Text>
             <Text style={styles.title}>安静下来，{'\n'}把今天做好。</Text>
             <Text style={styles.subtitle}>
-              用蓄能安排任务，用记录沉淀专注。少一点切换，多一点真正完成。
+              用朝计安排任务，用记录沉淀专注。少一点切换，多一点真正完成。
             </Text>
           </View>
 
@@ -90,7 +90,7 @@ export function LoginScreen({ auth, onStartLocal }: LoginScreenProps) {
             <View style={styles.previewDivider} />
             <View style={styles.previewPrinciples}>
               {[
-                ['sunny-outline', '蓄能', '主要优先'],
+                ['sunny-outline', '朝计', '主要优先'],
                 ['timer-outline', '记录', '专注当下'],
               ].map(([icon, label, hint]) => (
                 <View key={label} style={styles.previewPrinciple}>

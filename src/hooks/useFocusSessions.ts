@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
+  deleteRemoteFocusSession,
   fetchRemoteFocusSessions,
   insertRemoteFocusSession,
   readFocusCache,
@@ -14,6 +15,7 @@ export type FocusSessionState = {
   isLoading: boolean;
   error: string | null;
   addSession: (session: Omit<FocusSession, 'id'>) => Promise<boolean>;
+  removeSessions: (sessions: FocusSession[]) => Promise<boolean>;
   clearError: () => void;
 };
 
@@ -33,6 +35,7 @@ function errorMessage(error: unknown) {
 export function useFocusSessions(userId?: string): FocusSessionState {
   const scope = userId ?? 'guest';
   const [sessions, setSessions] = useState<FocusSession[]>([]);
+  const sessionsRef = useRef<FocusSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +43,7 @@ export function useFocusSessions(userId?: string): FocusSessionState {
     (producer: (current: FocusSession[]) => FocusSession[]) => {
       setSessions((current) => {
         const next = producer(current);
+        sessionsRef.current = next;
         void writeFocusCache(scope, next);
         return next;
       });
@@ -53,6 +57,7 @@ export function useFocusSessions(userId?: string): FocusSessionState {
 
     try {
       const cached = await readFocusCache(scope);
+      sessionsRef.current = cached;
       setSessions(cached);
 
       if (!userId) return;
@@ -76,6 +81,7 @@ export function useFocusSessions(userId?: string): FocusSessionState {
       }
 
       setSessions(remote);
+      sessionsRef.current = remote;
       await writeFocusCache(scope, remote);
     } catch (loadError) {
       setError(errorMessage(loadError));
@@ -117,11 +123,35 @@ export function useFocusSessions(userId?: string): FocusSessionState {
     }
   }
 
+  async function removeSessions(sessionsToRemove: FocusSession[]) {
+    if (sessionsToRemove.length === 0) return false;
+    setError(null);
+    const ids = new Set(sessionsToRemove.map((session) => session.id));
+    const snapshot = sessionsRef.current;
+    commit((current) => current.filter((session) => !ids.has(session.id)));
+
+    try {
+      if (userId) {
+        for (const session of sessionsToRemove) {
+          await deleteRemoteFocusSession(userId, session.id);
+        }
+      }
+      return true;
+    } catch (removeError) {
+      sessionsRef.current = snapshot;
+      setSessions(snapshot);
+      await writeFocusCache(scope, snapshot);
+      setError(errorMessage(removeError));
+      return false;
+    }
+  }
+
   return {
     sessions,
     isLoading,
     error,
     addSession,
+    removeSessions,
     clearError: () => setError(null),
   };
 }

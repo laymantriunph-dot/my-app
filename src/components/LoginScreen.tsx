@@ -90,7 +90,7 @@ export function LoginScreen({ auth, onStartLocal }: LoginScreenProps) {
             <View style={styles.previewDivider} />
             <View style={styles.previewPrinciples}>
               {[
-                ['sunny-outline', '朝计', '主要优先'],
+                ['sunny-outline', '朝计', 'Primary first'],
                 ['timer-outline', '记录', '专注当下'],
               ].map(([icon, label, hint]) => (
                 <View key={label} style={styles.previewPrinciple}>

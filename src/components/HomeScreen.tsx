@@ -17,6 +17,7 @@ import {
 } from 'react-native-safe-area-context';
 
 import { useArchives } from '../hooks/useArchives';
+import { useFocusSessions } from '../hooks/useFocusSessions';
 import { useMotivation } from '../hooks/useMotivation';
 import type { TaskState } from '../hooks/useTasks';
 import type { AuthUser } from '../lib/supabase';
@@ -36,7 +37,10 @@ import {
   type TaskCategory,
 } from '../types';
 import { ArchiveModal } from './ArchiveModal';
+import { ConfirmDialog } from './ConfirmDialog';
+import { FocusHistoryModal } from './FocusHistoryModal';
 import { MotivationModal } from './MotivationModal';
+import { ProgressDial } from './ProgressDial';
 import { RecordScreen } from './RecordScreen';
 import { TaskComposer } from './TaskComposer';
 import { TaskItem } from './TaskItem';
@@ -66,13 +70,16 @@ export function HomeScreen({
 }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   const archiveState = useArchives(user?.id);
+  const focusState = useFocusSessions(user?.id);
   const motivationState = useMotivation(user?.id);
   const [activeSection, setActiveSection] = useState<MainSection>('energy');
   const [activeCategory, setActiveCategory] =
     useState<TaskCategory>('today');
   const [composerVisible, setComposerVisible] = useState(false);
   const [archiveVisible, setArchiveVisible] = useState(false);
+  const [focusHistoryVisible, setFocusHistoryVisible] = useState(false);
   const [motivationVisible, setMotivationVisible] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState<Task | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [todayKey, setTodayKey] = useState(getLocalDateKey());
   const todayTasks = taskState.tasks.filter(
@@ -145,14 +152,16 @@ export function HomeScreen({
   ).length;
 
   function confirmDelete(task: Task) {
-    Alert.alert('删除待办？', task.title, [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: () => void taskState.removeTask(task),
-      },
-    ]);
+    setDeleteCandidate(task);
+  }
+
+  async function deleteTask(task: Task) {
+    setDeleteCandidate(null);
+    const removed = await taskState.removeTask(task);
+
+    if (removed && task.isCompleted && task.completedAt) {
+      await archiveState.unrecordCompletedTask(task, task.completedAt);
+    }
   }
 
   function openAccountMenu() {
@@ -204,30 +213,49 @@ export function HomeScreen({
 
   const listHeader = (
     <View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => setArchiveVisible(true)}
-        style={({ pressed }) => [
-          styles.successButton,
-          pressed && styles.toolPressed,
-        ]}
-      >
-        <View style={styles.successIcon}>
-          <Ionicons name="trophy-outline" size={18} color="#F7E5BC" />
-        </View>
-        <View style={styles.successCopy}>
-          <Text style={styles.successTitle}>The Way Of Success</Text>
-          <Text style={styles.successHint}>
-            朝计与遐筹的完成记录
-          </Text>
-        </View>
-        <View style={styles.successCount}>
-          <Text style={styles.successCountText}>
-            {archiveState.archives.length}
-          </Text>
-          <Ionicons name="chevron-forward" size={15} color="#D9C590" />
-        </View>
-      </Pressable>
+      <View style={styles.topActions}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setArchiveVisible(true)}
+          style={({ pressed }) => [
+            styles.successButton,
+            pressed && styles.toolPressed,
+          ]}
+        >
+          <View style={styles.successIcon}>
+            <Ionicons name="trophy-outline" size={18} color="#F7E5BC" />
+          </View>
+          <View style={styles.successCopy}>
+            <Text style={styles.successTitle}>Accomplished</Text>
+            <Text style={styles.successHint}>完成的朝计与遐筹</Text>
+          </View>
+          <View style={styles.successCount}>
+            <Text style={styles.successCountText}>
+              {archiveState.archives.length}
+            </Text>
+            <Ionicons name="chevron-forward" size={15} color="#D9C590" />
+          </View>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setFocusHistoryVisible(true)}
+          style={({ pressed }) => [
+            styles.focusArchiveButton,
+            pressed && styles.toolPressed,
+          ]}
+        >
+          <View style={styles.focusArchiveIcon}>
+            <Ionicons name="timer-outline" size={18} color={colors.longTerm} />
+          </View>
+          <View>
+            <Text style={styles.focusArchiveTitle}>Focus</Text>
+            <Text style={styles.focusArchiveHint}>
+              {focusState.sessions.length} 条计时
+            </Text>
+          </View>
+        </Pressable>
+      </View>
 
       <View style={styles.greetingBlock}>
         <Text style={styles.dateLabel}>{getTodayLabel()}</Text>
@@ -256,25 +284,14 @@ export function HomeScreen({
           end={{ x: 1, y: 1 }}
           style={styles.progressCard}
         >
-          <View style={styles.progressPattern}>
-            <View style={styles.progressPatternRing} />
-            <View style={styles.progressPatternDot} />
+          <View style={styles.progressCopy}>
+            <Text style={styles.progressEyebrow}>朝计 · TODAY</Text>
+            <Text style={styles.progressStatement}>把今天，稳稳完成。</Text>
+            <Text style={styles.progressCaption}>
+              {stats.completed} accomplished · {stats.remaining} remaining
+            </Text>
           </View>
-        <View style={styles.progressCopy}>
-          <Text style={styles.progressEyebrow}>朝计 · TODAY</Text>
-          <View style={styles.progressNumberRow}>
-            <Text style={styles.progressNumber}>{stats.percentage}</Text>
-            <Text style={styles.progressUnit}>%</Text>
-          </View>
-          <Text style={styles.progressCaption}>
-            完成 {stats.completed} 项 · 剩余 {stats.remaining} 项
-          </Text>
-        </View>
-        <View style={styles.progressTrack}>
-          <View
-            style={[styles.progressFill, { width: `${stats.percentage}%` }]}
-          />
-        </View>
+          <ProgressDial percentage={stats.percentage} />
         </LinearGradient>
       ) : (
         <View style={styles.reflectionCard}>
@@ -348,7 +365,7 @@ export function HomeScreen({
           color={colors.inkFaint}
         />
         <Text style={styles.autoArchiveText}>
-          {activeMeta.label}任务完成后会自动保存在 The Way Of Success
+          {activeMeta.label}任务完成后会自动保存在 Accomplished
         </Text>
       </View>
 
@@ -377,7 +394,9 @@ export function HomeScreen({
       <View style={styles.listHeading}>
         <View>
           <Text style={styles.listTitle}>
-            {activeCategory === 'today' ? '今天，先做主要的' : '遐筹，慢慢积累'}
+            {activeCategory === 'today'
+              ? '今天，先完成 Primary'
+              : '遐筹，慢慢积累'}
           </Text>
           <Text style={styles.listDescription}>{activeMeta.hint}</Text>
         </View>
@@ -614,7 +633,7 @@ export function HomeScreen({
               activeSection !== 'records' && styles.hiddenPage,
             ]}
           >
-            <RecordScreen userId={user?.id} />
+            <RecordScreen focusState={focusState} />
           </View>
         </View>
 
@@ -714,12 +733,33 @@ export function HomeScreen({
         onDelete={archiveState.removeArchives}
       />
 
+      <FocusHistoryModal
+        visible={focusHistoryVisible}
+        sessions={focusState.sessions}
+        onClose={() => setFocusHistoryVisible(false)}
+        onDelete={focusState.removeSessions}
+      />
+
       <MotivationModal
         visible={motivationVisible}
         value={motivationState.motivation}
         defaultValue={motivationState.defaultMotivation}
         onClose={() => setMotivationVisible(false)}
         onSave={motivationState.setMotivation}
+      />
+
+      <ConfirmDialog
+        visible={deleteCandidate !== null}
+        title="删除这条任务？"
+        description={
+          deleteCandidate
+            ? `“${deleteCandidate.title}”会从清单和 Accomplished 记录中真正删除。`
+            : ''
+        }
+        onCancel={() => setDeleteCandidate(null)}
+        onConfirm={() => {
+          if (deleteCandidate) void deleteTask(deleteCandidate);
+        }}
       />
     </SafeAreaView>
   );
@@ -856,11 +896,16 @@ const styles = StyleSheet.create({
   progressCard: {
     minHeight: 168,
     padding: 21,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderRadius: radii.lg,
     overflow: 'hidden',
     ...shadows.card,
   },
   progressCopy: {
+    flex: 1,
+    paddingRight: 10,
     zIndex: 2,
   },
   progressEyebrow: {
@@ -868,6 +913,15 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 1.7,
+  },
+  progressStatement: {
+    marginTop: 12,
+    maxWidth: 170,
+    color: '#FFF9ED',
+    fontFamily: 'serif',
+    fontSize: 23,
+    lineHeight: 31,
+    fontWeight: '600',
   },
   progressNumberRow: {
     flexDirection: 'row',
@@ -1102,6 +1156,11 @@ const styles = StyleSheet.create({
   toolPressed: {
     opacity: 0.68,
   },
+  topActions: {
+    marginTop: 15,
+    flexDirection: 'row',
+    gap: 8,
+  },
   autoArchiveText: {
     flex: 1,
     color: colors.inkFaint,
@@ -1109,8 +1168,8 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   successButton: {
+    flex: 1,
     minHeight: 65,
-    marginTop: 15,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1150,6 +1209,37 @@ const styles = StyleSheet.create({
     color: '#F7E5BC',
     fontSize: 15,
     fontWeight: '800',
+  },
+  focusArchiveButton: {
+    width: 102,
+    minHeight: 65,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  focusArchiveIcon: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 11,
+    backgroundColor: colors.longTermSoft,
+  },
+  focusArchiveTitle: {
+    color: colors.ink,
+    fontFamily: 'serif',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  focusArchiveHint: {
+    marginTop: 3,
+    color: colors.inkFaint,
+    fontSize: 8,
   },
   activeCategoryPill: {
     minHeight: 48,

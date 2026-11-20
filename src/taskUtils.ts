@@ -42,13 +42,13 @@ export const CATEGORY_META = {
 
 export const PRIORITY_META = {
   primary: {
-    label: '主要',
+    label: 'Primary',
     hint: '今天最重要的推进',
     color: colors.today,
     softColor: colors.todaySoft,
   },
   secondary: {
-    label: '次要',
+    label: 'Secondly.',
     hint: '完成主要事项后再处理',
     color: colors.secondary,
     softColor: colors.secondarySoft,

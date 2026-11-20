@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -18,6 +17,7 @@ import {
   ACTIVE_TASK_CATEGORIES,
   type TaskArchive,
 } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
 
 type ArchiveModalProps = {
   visible: boolean;
@@ -48,6 +48,7 @@ export function ArchiveModal({
   const insets = useSafeAreaInsets();
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const selectedArchives = archives.filter((archive) =>
     selectedIds.has(archive.id),
   );
@@ -76,19 +77,13 @@ export function ArchiveModal({
 
   function confirmDelete() {
     if (selectedArchives.length === 0) return;
+    setDeleteConfirmVisible(true);
+  }
 
-    Alert.alert('抹除所选记录？', `将删除 ${selectedArchives.length} 条记录。`, [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '抹除',
-        style: 'destructive',
-        onPress: () => {
-          void onDelete(selectedArchives).then((removed) => {
-            if (removed) cancelSelection();
-          });
-        },
-      },
-    ]);
+  async function deleteSelected() {
+    setDeleteConfirmVisible(false);
+    const removed = await onDelete(selectedArchives);
+    if (removed) cancelSelection();
   }
 
   return (
@@ -115,8 +110,8 @@ export function ArchiveModal({
           <View style={styles.handle} />
           <View style={styles.header}>
             <View>
-              <Text style={styles.eyebrow}>THE WAY OF SUCCESS</Text>
-              <Text style={styles.title}>走过的每一步</Text>
+              <Text style={styles.eyebrow}>ACCOMPLISHED</Text>
+              <Text style={styles.title}>已完成</Text>
             </View>
             <View style={styles.headerActions}>
               {archives.length > 0 ? (
@@ -206,15 +201,16 @@ export function ArchiveModal({
                 />
                 <Text style={styles.emptyTitle}>还没有历史清单</Text>
                 <Text style={styles.emptyText}>
-                  保存后，这里会留下当时的任务快照。
+                  完成任务后，这里会按分类自动留下记录。
                 </Text>
               </View>
             ) : (
-              groupedArchives.map((group) => {
-                const meta = CATEGORY_META[group.category];
+              <View style={styles.archiveColumns}>
+                {groupedArchives.map((group) => {
+                  const meta = CATEGORY_META[group.category];
 
-                return (
-                  <View key={group.category} style={styles.archiveGroup}>
+                  return (
+                    <View key={group.category} style={styles.archiveGroup}>
                     <View style={styles.groupHeader}>
                       <View
                         style={[
@@ -297,13 +293,23 @@ export function ArchiveModal({
                         );
                       })
                     )}
-                  </View>
-                );
-              })
+                    </View>
+                  );
+                })}
+              </View>
             )}
           </ScrollView>
         </View>
       </View>
+
+      <ConfirmDialog
+        visible={deleteConfirmVisible}
+        title="抹除所选记录？"
+        description={`将永久删除 ${selectedArchives.length} 条 Accomplished 记录。`}
+        confirmLabel="确认抹除"
+        onCancel={() => setDeleteConfirmVisible(false)}
+        onConfirm={() => void deleteSelected()}
+      />
     </Modal>
   );
 }
@@ -496,7 +502,13 @@ const styles = StyleSheet.create({
     color: colors.inkFaint,
     fontSize: 10,
   },
+  archiveColumns: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
   archiveGroup: {
+    flex: 1,
     marginBottom: 19,
   },
   groupHeader: {
@@ -539,7 +551,7 @@ const styles = StyleSheet.create({
   archiveCard: {
     minHeight: 84,
     marginBottom: 9,
-    padding: 12,
+    padding: 10,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,

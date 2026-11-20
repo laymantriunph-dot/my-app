@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useFocusSessions } from '../hooks/useFocusSessions';
+import type { FocusSessionState } from '../hooks/useFocusSessions';
 import { colors, radii, shadows } from '../theme';
 import type { FocusSession, TimerMode } from '../types';
 
@@ -105,9 +105,12 @@ function SessionRow({ session }: { session: FocusSession }) {
   );
 }
 
-export function RecordScreen({ userId }: { userId?: string }) {
+export function RecordScreen({
+  focusState,
+}: {
+  focusState: FocusSessionState;
+}) {
   const insets = useSafeAreaInsets();
-  const focusState = useFocusSessions(userId);
   const [mode, setMode] = useState<TimerMode>('countdown');
   const [durationMinutes, setDurationMinutes] = useState('25');
   const [note, setNote] = useState('专注学习');
@@ -268,16 +271,21 @@ export function RecordScreen({ userId }: { userId?: string }) {
     setDurationModalVisible(true);
   }
 
-  function applyDuration() {
+  function beginFromPicker() {
     const nextMinutes = Math.max(
       1,
       Math.min(600, Number(draftMinutes || 0)),
     );
+    const nextNow = Date.now();
     setDurationMinutes(String(nextMinutes));
     setBaseElapsedMs(0);
-    setSessionStartedAt(null);
-    setNowMs(Date.now());
+    setSessionStartedAt(new Date(nextNow).toISOString());
+    setNowMs(nextNow);
+    setRunStartedAt(nextNow);
+    setStatus('running');
+    completionHandled.current = false;
     setDurationModalVisible(false);
+    setImmersiveVisible(true);
   }
 
   return (
@@ -373,7 +381,14 @@ export function RecordScreen({ userId }: { userId?: string }) {
         </Pressable>
 
         <View style={styles.timerActions}>
-          {status === 'running' ? (
+          {status === 'idle' ? (
+            <View style={styles.idlePrompt}>
+              <Ionicons name="finger-print-outline" size={18} color="#D8E5DF" />
+              <Text style={styles.idlePromptText}>
+                轻触圆盘，设定时间并开始
+              </Text>
+            </View>
+          ) : status === 'running' ? (
             <Pressable
               accessibilityRole="button"
               onPress={pauseTimer}
@@ -549,76 +564,99 @@ export function RecordScreen({ userId }: { userId?: string }) {
             ]}
           >
             <View style={styles.sheetHandle} />
-            <Text style={styles.sheetEyebrow}>COUNTDOWN</Text>
-            <Text style={styles.sheetTitle}>设置专注时长</Text>
+            <Text style={styles.sheetEyebrow}>
+              {mode === 'countdown' ? 'COUNTDOWN' : 'STOPWATCH'}
+            </Text>
+            <Text style={styles.sheetTitle}>
+              {mode === 'countdown' ? '设置专注时长' : '开始一段专注'}
+            </Text>
             <Text style={styles.sheetHint}>
-              选择常用长度，或者在下方输入自己的分钟数。
+              {mode === 'countdown'
+                ? '选择常用长度，或者在下方输入自己的分钟数。'
+                : '正计时没有期限，结束时会记录本次专注时长。'}
             </Text>
 
-            <View style={styles.durationOptions}>
-              {DURATION_PRESETS.map((minutes) => {
-                const selected = Number(draftMinutes) === minutes;
+            {mode === 'countdown' ? (
+              <>
+                <View style={styles.durationOptions}>
+                  {DURATION_PRESETS.map((minutes) => {
+                    const selected = Number(draftMinutes) === minutes;
 
-                return (
-                  <Pressable
-                    key={minutes}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    onPress={() => setDraftMinutes(String(minutes))}
-                    style={[
-                      styles.durationOption,
-                      selected && styles.durationOptionSelected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.durationOptionNumber,
-                        selected && styles.durationOptionNumberSelected,
-                      ]}
-                    >
-                      {minutes}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.durationOptionUnit,
-                        selected && styles.durationOptionUnitSelected,
-                      ]}
-                    >
-                      分钟
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+                    return (
+                      <Pressable
+                        key={minutes}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                        onPress={() => setDraftMinutes(String(minutes))}
+                        style={[
+                          styles.durationOption,
+                          selected && styles.durationOptionSelected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.durationOptionNumber,
+                            selected && styles.durationOptionNumberSelected,
+                          ]}
+                        >
+                          {minutes}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.durationOptionUnit,
+                            selected && styles.durationOptionUnitSelected,
+                          ]}
+                        >
+                          分钟
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
 
-            <View style={styles.customDuration}>
-              <Text style={styles.customLabel}>自定义时长</Text>
-              <TextInput
-                value={draftMinutes}
-                onChangeText={(value) =>
-                  setDraftMinutes(value.replace(/[^\d]/g, ''))
-                }
-                keyboardType="number-pad"
-                maxLength={3}
-                selectTextOnFocus
-                style={styles.durationInput}
-              />
-              <Text style={styles.customLabel}>分钟</Text>
-            </View>
+                <View style={styles.customDuration}>
+                  <Text style={styles.customLabel}>自定义时长</Text>
+                  <TextInput
+                    value={draftMinutes}
+                    onChangeText={(value) =>
+                      setDraftMinutes(value.replace(/[^\d]/g, ''))
+                    }
+                    keyboardType="number-pad"
+                    maxLength={3}
+                    selectTextOnFocus
+                    style={styles.durationInput}
+                  />
+                  <Text style={styles.customLabel}>分钟</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.openFocusCard}>
+                <Ionicons
+                  name="infinite-outline"
+                  size={28}
+                  color={colors.longTerm}
+                />
+                <Text style={styles.openFocusText}>
+                  不设终点，专注于当下
+                </Text>
+              </View>
+            )}
 
             <View style={styles.durationActions}>
               <Pressable
+                accessibilityRole="button"
                 onPress={() => setDurationModalVisible(false)}
                 style={styles.cancelDurationButton}
               >
                 <Text style={styles.cancelDurationText}>取消</Text>
               </Pressable>
               <Pressable
-                onPress={applyDuration}
+                accessibilityRole="button"
+                onPress={beginFromPicker}
                 style={styles.applyDurationButton}
               >
-                <Text style={styles.applyDurationText}>应用时长</Text>
-                <Ionicons name="arrow-forward" size={18} color={colors.white} />
+                <Text style={styles.applyDurationText}>Begin!</Text>
+                <Ionicons name="play" size={17} color={colors.white} />
               </Pressable>
             </View>
           </View>
@@ -857,6 +895,22 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.13)',
+  },
+  idlePrompt: {
+    flex: 1,
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.13)',
+  },
+  idlePromptText: {
+    color: '#D8E5DF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   buttonPressed: {
     opacity: 0.76,
@@ -1155,6 +1209,20 @@ const styles = StyleSheet.create({
     marginTop: 18,
     flexDirection: 'row',
     gap: 7,
+  },
+  openFocusCard: {
+    minHeight: 112,
+    marginTop: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: radii.md,
+    backgroundColor: colors.longTermSoft,
+  },
+  openFocusText: {
+    color: colors.longTerm,
+    fontSize: 12,
+    fontWeight: '700',
   },
   durationOption: {
     flex: 1,

@@ -207,3 +207,17 @@ export async function insertRemoteFocusSession(
   if (error) throw error;
   return focusSessionFromRow(data as FocusSessionRow);
 }
+
+export async function deleteRemoteFocusSession(
+  userId: string,
+  sessionId: string,
+) {
+  const client = getSupabase();
+  const { error } = await client
+    .from('focus_sessions')
+    .delete()
+    .eq('id', sessionId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+}

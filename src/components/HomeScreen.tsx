@@ -395,10 +395,14 @@ export function HomeScreen({
         <View>
           <Text style={styles.listTitle}>
             {activeCategory === 'today'
-              ? '今天，先完成 Primary'
-              : '遐筹，慢慢积累'}
+              ? 'Lead the day.'
+              : 'Think beyond today.'}
           </Text>
-          <Text style={styles.listDescription}>{activeMeta.hint}</Text>
+          <Text style={styles.listDescription}>
+            {activeCategory === 'today'
+              ? '先完成 Primary，再让其余事情各归其位。'
+              : '让重要而不紧急的事，慢慢生长。'}
+          </Text>
         </View>
         <Text style={styles.listCount}>
           {pendingTasks.length} 待办 · {completedTasks.length} 完成

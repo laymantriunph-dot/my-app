@@ -12,6 +12,15 @@ type TaskItemProps = {
   onDelete: () => void;
 };
 
+function formatCreatedAt(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
 export function TaskItem({
   task,
   disabled = false,
@@ -49,30 +58,51 @@ export function TaskItem({
         ) : null}
       </Pressable>
 
-      <View style={styles.content}>
+      <View
+        style={[
+          styles.content,
+          !task.isCompleted && task.category === 'today' && styles.contentOnly,
+        ]}
+      >
         <Text
           numberOfLines={2}
           style={[styles.title, task.isCompleted && styles.completedTitle]}
         >
           {task.title}
         </Text>
-        <View style={styles.metaRow}>
-          <View style={[styles.categoryDot, { backgroundColor: markerColor }]} />
-          <Text style={styles.categoryLabel}>{categoryLabel}</Text>
-          <Text style={styles.metaDivider}>·</Text>
-          <Text style={styles.categoryHint}>
-            {task.isCompleted
-              ? '已完成'
-              : task.category === 'today'
-                ? priorityMeta.hint
-                : meta.hint}
-          </Text>
-        </View>
+        {task.isCompleted || task.category === 'longTerm' ? (
+          <View style={styles.metaRow}>
+            {task.isCompleted ? (
+              <>
+                <View
+                  style={[
+                    styles.categoryDot,
+                    { backgroundColor: markerColor },
+                  ]}
+                />
+                <Text style={styles.categoryLabel}>{categoryLabel}</Text>
+                <Text style={styles.metaDivider}>·</Text>
+                <Text style={styles.categoryHint}>已完成</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons
+                  name="time-outline"
+                  size={12}
+                  color={colors.inkFaint}
+                />
+                <Text style={styles.creationTime}>
+                  创作于 {formatCreatedAt(task.createdAt)}
+                </Text>
+              </>
+            )}
+          </View>
+        ) : null}
       </View>
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="delete task"
+        accessibilityLabel="泯迹 task"
         disabled={disabled}
         hitSlop={8}
         onPress={onDelete}
@@ -115,6 +145,9 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 7,
   },
+  contentOnly: {
+    gap: 0,
+  },
   title: {
     color: colors.ink,
     fontSize: 15,
@@ -147,6 +180,10 @@ const styles = StyleSheet.create({
   categoryHint: {
     color: colors.inkFaint,
     fontSize: 11,
+  },
+  creationTime: {
+    color: colors.inkFaint,
+    fontSize: 10,
   },
   deleteButton: {
     width: 34,

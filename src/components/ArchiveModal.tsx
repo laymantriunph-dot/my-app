@@ -37,6 +37,59 @@ function formatArchiveDate(value: string) {
   }).format(new Date(value));
 }
 
+type ArchiveTaskCardProps = {
+  task: Task;
+  archivedAt: string;
+  isSelecting: boolean;
+  selected: boolean;
+  onToggle: () => void;
+};
+
+function ArchiveTaskCard({
+  task,
+  archivedAt,
+  isSelecting,
+  selected,
+  onToggle,
+}: ArchiveTaskCardProps) {
+  const meta = CATEGORY_META[task.category];
+
+  return (
+    <Pressable
+      accessibilityRole={isSelecting ? 'checkbox' : undefined}
+      accessibilityState={isSelecting ? { checked: selected } : undefined}
+      disabled={!isSelecting}
+      onPress={onToggle}
+      style={[styles.archiveCard, selected && styles.archiveCardSelected]}
+    >
+      {isSelecting ? (
+        <View
+          style={[
+            styles.selectionCircle,
+            selected && styles.selectionCircleActive,
+          ]}
+        >
+          {selected ? (
+            <Ionicons name="checkmark" size={14} color={colors.white} />
+          ) : null}
+        </View>
+      ) : (
+        <View style={[styles.taskCheck, { borderColor: meta.color }]}>
+          <Ionicons name="checkmark" size={13} color={meta.color} />
+        </View>
+      )}
+      <View style={styles.archiveCopy}>
+        <Text numberOfLines={2} style={styles.archiveTitle}>
+          {task.title}
+        </Text>
+        <Text style={styles.archiveMeta}>
+          {formatArchiveDate(archivedAt)}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export function ArchiveModal({
   visible,
   archives,
@@ -132,7 +185,7 @@ export function ArchiveModal({
                       isSelecting && styles.eraseTextActive,
                     ]}
                   >
-                    {isSelecting ? 'cancel' : 'delete'}
+                    {isSelecting ? 'cancel' : '泯迹'}
                   </Text>
                 </Pressable>
               ) : null}
@@ -177,7 +230,7 @@ export function ArchiveModal({
                 ]}
               >
                 <Ionicons name="trash-outline" size={15} color={colors.white} />
-                <Text style={styles.deleteSelectedText}>delete selected</Text>
+                <Text style={styles.deleteSelectedText}>泯迹所选</Text>
               </Pressable>
             </View>
           ) : null}
@@ -226,87 +279,73 @@ export function ArchiveModal({
                       </View>
                       <Text style={styles.groupTitle}>{meta.label}</Text>
                       <Text style={styles.groupCount}>
-                        {group.archives.length} 条记录
+                        {group.archives.reduce(
+                          (total, archive) => total + archive.tasks.length,
+                          0,
+                        )}{' '}
+                        项任务
                       </Text>
                     </View>
 
-                    {group.archives.every(
-                      (archive) => archive.tasks.length === 0,
-                    ) ? (
-                      <View style={styles.groupEmpty}>
-                        <Text style={styles.groupEmptyText}>
-                          暂无{meta.label}完成记录
-                        </Text>
-                      </View>
-                    ) : (
-                      group.archives.flatMap((archive) =>
-                        archive.tasks.map((task) => {
-                          const selected = selectedIds.has(task.id);
+                    {(() => {
+                      const items = group.archives.flatMap((archive) =>
+                        archive.tasks.map((task) => ({ archive, task })),
+                      );
+                      const sections =
+                        group.category === 'today'
+                          ? [
+                              {
+                                key: 'primary',
+                                label: 'Primary',
+                                items: items.filter(
+                                  (item) =>
+                                    item.task.priority === 'primary',
+                                ),
+                              },
+                              {
+                                key: 'secondary',
+                                label: 'Secondly.',
+                                items: items.filter(
+                                  (item) =>
+                                    item.task.priority === 'secondary',
+                                ),
+                              },
+                            ]
+                          : [{ key: 'longTerm', label: '', items }];
 
-                          return (
-                            <Pressable
-                              key={`${archive.id}:${task.id}`}
-                              accessibilityRole={
-                                isSelecting ? 'checkbox' : undefined
-                              }
-                              accessibilityState={
-                                isSelecting ? { checked: selected } : undefined
-                              }
-                              disabled={!isSelecting}
-                              onPress={() => toggleSelected(task)}
-                              style={[
-                                styles.archiveCard,
-                                selected && styles.archiveCardSelected,
-                              ]}
-                            >
-                              {isSelecting ? (
-                                <View
-                                  style={[
-                                    styles.selectionCircle,
-                                    selected && styles.selectionCircleActive,
-                                  ]}
-                                >
-                                  {selected ? (
-                                    <Ionicons
-                                      name="checkmark"
-                                      size={14}
-                                      color={colors.white}
-                                    />
-                                  ) : null}
-                                </View>
-                              ) : (
-                                <View
-                                  style={[
-                                    styles.taskCheck,
-                                    { borderColor: meta.color },
-                                  ]}
-                                >
-                                  <Ionicons
-                                    name="checkmark"
-                                    size={13}
-                                    color={meta.color}
-                                  />
-                                </View>
-                              )}
-                              <View style={styles.archiveCopy}>
-                                <Text
-                                  numberOfLines={2}
-                                  style={styles.archiveTitle}
-                                >
-                                  {task.title}
-                                </Text>
-                                <Text style={styles.archiveMeta}>
-                                  {task.category === 'today'
-                                    ? `${meta.label} · ${task.priority === 'primary' ? 'Primary' : 'Secondly.'}`
-                                    : meta.label}{' '}
-                                  · {formatArchiveDate(archive.archivedAt)}
-                                </Text>
-                              </View>
-                            </Pressable>
-                          );
-                        }),
-                      )
-                    )}
+                      return sections.map((section) => (
+                        <View key={section.key} style={styles.priorityGroup}>
+                          {section.label ? (
+                            <View style={styles.priorityHeader}>
+                              <Text style={styles.priorityTitle}>
+                                {section.label}
+                              </Text>
+                              <Text style={styles.priorityCount}>
+                                {section.items.length}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {section.items.length === 0 ? (
+                            <View style={styles.groupEmpty}>
+                              <Text style={styles.groupEmptyText}>
+                                暂无{section.label || meta.label}记录
+                              </Text>
+                            </View>
+                          ) : (
+                            section.items.map(({ archive, task }) => (
+                              <ArchiveTaskCard
+                                key={`${archive.id}:${task.id}`}
+                                task={task}
+                                archivedAt={archive.archivedAt}
+                                isSelecting={isSelecting}
+                                selected={selectedIds.has(task.id)}
+                                onToggle={() => toggleSelected(task)}
+                              />
+                            ))
+                          )}
+                        </View>
+                      ));
+                    })()}
                     </View>
                   );
                 })}
@@ -553,6 +592,34 @@ const styles = StyleSheet.create({
   groupEmptyText: {
     color: colors.inkFaint,
     fontSize: 10,
+  },
+  priorityGroup: {
+    marginBottom: 11,
+  },
+  priorityHeader: {
+    marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 2,
+  },
+  priorityTitle: {
+    color: colors.inkSoft,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  priorityCount: {
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 5,
+    borderRadius: 9,
+    color: colors.inkFaint,
+    backgroundColor: colors.surfaceMuted,
+    fontSize: 8,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 17,
   },
   archiveCard: {
     minHeight: 84,

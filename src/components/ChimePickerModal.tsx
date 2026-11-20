@@ -31,6 +31,7 @@ export function ChimePickerModal({
 
   function preview(id: ChimeId) {
     const chime = CHIMES.find((item) => item.id === id) ?? CHIMES[0];
+    player.volume = 0.32;
     player.replace(chime.source);
     player.play();
   }

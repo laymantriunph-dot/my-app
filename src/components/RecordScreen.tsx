@@ -213,6 +213,7 @@ export function RecordScreen({
   }, [status]);
 
   useEffect(() => {
+    chimePlayer.volume = 0.36;
     chimePlayer.replace(selectedChime.source);
   }, [chimePlayer, selectedChime.id, selectedChime.source]);
 
@@ -317,6 +318,7 @@ export function RecordScreen({
       setImmersiveVisible(false);
       try {
         await chimePlayer.seekTo(0);
+        chimePlayer.volume = 0.36;
         chimePlayer.play();
       } catch {
         // The visual completion alert still works if audio is unavailable.

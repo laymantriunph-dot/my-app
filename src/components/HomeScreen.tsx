@@ -245,7 +245,6 @@ export function HomeScreen({
           </View>
           <View style={styles.successCopy}>
             <Text style={styles.successTitle}>Accomplished</Text>
-            <Text style={styles.successHint}>完成的朝计与遐筹</Text>
           </View>
           <View style={styles.successCount}>
             <Text style={styles.successCountText}>
@@ -772,12 +771,13 @@ export function HomeScreen({
 
       <ConfirmDialog
         visible={deleteCandidate !== null}
-        title="Delete this task?"
+        title="让此任务泯迹？"
         description={
           deleteCandidate
             ? `“${deleteCandidate.title}”会从清单和 Accomplished 记录中移除。`
             : ''
         }
+        confirmLabel="泯迹"
         onCancel={() => setDeleteCandidate(null)}
         onConfirm={() => {
           if (deleteCandidate) void deleteTask(deleteCandidate);
@@ -1213,7 +1213,8 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     color: '#FFF7E8',
-    fontSize: 13,
+    fontFamily: 'serif',
+    fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.4,
   },

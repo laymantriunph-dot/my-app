@@ -633,7 +633,7 @@ export function HomeScreen({
               activeSection !== 'records' && styles.hiddenPage,
             ]}
           >
-            <RecordScreen focusState={focusState} />
+            <RecordScreen focusState={focusState} userId={user?.id} />
           </View>
         </View>
 
@@ -750,10 +750,10 @@ export function HomeScreen({
 
       <ConfirmDialog
         visible={deleteCandidate !== null}
-        title="删除这条任务？"
+        title="Delete this task?"
         description={
           deleteCandidate
-            ? `“${deleteCandidate.title}”会从清单和 Accomplished 记录中真正删除。`
+            ? `“${deleteCandidate.title}”会从清单和 Accomplished 记录中移除。`
             : ''
         }
         onCancel={() => setDeleteCandidate(null)}

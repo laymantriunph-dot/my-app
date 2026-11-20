@@ -17,7 +17,6 @@ import {
   ACTIVE_TASK_CATEGORIES,
   type TaskArchive,
 } from '../types';
-import { ConfirmDialog } from './ConfirmDialog';
 
 type ArchiveModalProps = {
   visible: boolean;
@@ -48,7 +47,6 @@ export function ArchiveModal({
   const insets = useSafeAreaInsets();
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const selectedArchives = archives.filter((archive) =>
     selectedIds.has(archive.id),
   );
@@ -75,13 +73,8 @@ export function ArchiveModal({
     setSelectedIds(new Set());
   }
 
-  function confirmDelete() {
-    if (selectedArchives.length === 0) return;
-    setDeleteConfirmVisible(true);
-  }
-
   async function deleteSelected() {
-    setDeleteConfirmVisible(false);
+    if (selectedArchives.length === 0) return;
     const removed = await onDelete(selectedArchives);
     if (removed) cancelSelection();
   }
@@ -132,7 +125,7 @@ export function ArchiveModal({
                       isSelecting && styles.eraseTextActive,
                     ]}
                   >
-                    {isSelecting ? '取消' : '抹除'}
+                    {isSelecting ? 'cancel' : 'delete'}
                   </Text>
                 </Pressable>
               ) : null}
@@ -169,7 +162,7 @@ export function ArchiveModal({
               <Pressable
                 accessibilityRole="button"
                 disabled={selectedArchives.length === 0}
-                onPress={confirmDelete}
+                onPress={() => void deleteSelected()}
                 style={[
                   styles.deleteSelectedButton,
                   selectedArchives.length === 0 &&
@@ -177,7 +170,7 @@ export function ArchiveModal({
                 ]}
               >
                 <Ionicons name="trash-outline" size={15} color={colors.white} />
-                <Text style={styles.deleteSelectedText}>抹除所选</Text>
+                <Text style={styles.deleteSelectedText}>delete selected</Text>
               </Pressable>
             </View>
           ) : null}
@@ -302,14 +295,6 @@ export function ArchiveModal({
         </View>
       </View>
 
-      <ConfirmDialog
-        visible={deleteConfirmVisible}
-        title="抹除所选记录？"
-        description={`将永久删除 ${selectedArchives.length} 条 Accomplished 记录。`}
-        confirmLabel="确认抹除"
-        onCancel={() => setDeleteConfirmVisible(false)}
-        onConfirm={() => void deleteSelected()}
-      />
     </Modal>
   );
 }

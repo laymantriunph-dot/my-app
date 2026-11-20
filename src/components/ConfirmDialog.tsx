@@ -14,6 +14,7 @@ type ConfirmDialogProps = {
   title: string;
   description: string;
   confirmLabel?: string;
+  embedded?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -22,18 +23,13 @@ export function ConfirmDialog({
   visible,
   title,
   description,
-  confirmLabel = '确认删除',
+  confirmLabel = 'delete',
+  embedded = false,
   onCancel,
   onConfirm,
 }: ConfirmDialogProps) {
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onCancel}
-    >
-      <View style={styles.root}>
+  const content = (
+      <View style={[styles.root, embedded && styles.embeddedRoot]}>
         <Pressable style={styles.backdrop} onPress={onCancel} />
         <View style={styles.dialog}>
           <View style={styles.icon}>
@@ -44,13 +40,15 @@ export function ConfirmDialog({
           <View style={styles.actions}>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="cancel action"
               onPress={onCancel}
               style={styles.cancelButton}
             >
-              <Text style={styles.cancelText}>取消</Text>
+              <Text style={styles.cancelText}>cancel</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="confirm delete"
               onPress={onConfirm}
               style={styles.confirmButton}
             >
@@ -59,6 +57,20 @@ export function ConfirmDialog({
           </View>
         </View>
       </View>
+  );
+
+  if (embedded) {
+    return visible ? content : null;
+  }
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
+      {content}
     </Modal>
   );
 }
@@ -69,6 +81,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
+  },
+  embeddedRoot: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 20,
   },
   backdrop: {
     ...StyleSheet.absoluteFill,

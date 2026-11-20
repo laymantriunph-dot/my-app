@@ -72,7 +72,7 @@ export function TaskItem({
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="删除待办"
+        accessibilityLabel="delete task"
         disabled={disabled}
         hitSlop={8}
         onPress={onDelete}

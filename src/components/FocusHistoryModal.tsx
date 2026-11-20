@@ -12,7 +12,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, radii, shadows } from '../theme';
 import type { FocusSession, TimerMode } from '../types';
-import { ConfirmDialog } from './ConfirmDialog';
 
 type Filter = 'all' | TimerMode;
 
@@ -49,7 +48,6 @@ export function FocusHistoryModal({
   const [filter, setFilter] = useState<Filter>('all');
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [confirmVisible, setConfirmVisible] = useState(false);
   const filtered =
     filter === 'all'
       ? sessions
@@ -71,7 +69,6 @@ export function FocusHistoryModal({
   }
 
   async function deleteSelected() {
-    setConfirmVisible(false);
     const removed = await onDelete(selected);
     if (removed) cancelSelection();
   }
@@ -119,7 +116,7 @@ export function FocusHistoryModal({
                       isSelecting && styles.eraseTextActive,
                     ]}
                   >
-                    {isSelecting ? '取消' : '删除'}
+                    {isSelecting ? 'cancel' : 'delete'}
                   </Text>
                 </Pressable>
               ) : null}
@@ -171,13 +168,13 @@ export function FocusHistoryModal({
               <Pressable
                 accessibilityRole="button"
                 disabled={selected.length === 0}
-                onPress={() => setConfirmVisible(true)}
+                onPress={() => void deleteSelected()}
                 style={[
                   styles.deleteButton,
                   selected.length === 0 && styles.deleteButtonDisabled,
                 ]}
               >
-                <Text style={styles.deleteText}>删除所选</Text>
+                <Text style={styles.deleteText}>delete selected</Text>
               </Pressable>
             </View>
           ) : null}
@@ -266,14 +263,6 @@ export function FocusHistoryModal({
         </View>
       </View>
 
-      <ConfirmDialog
-        visible={confirmVisible}
-        title="删除计时记录？"
-        description={`将永久删除 ${selected.length} 条计时记录。`}
-        confirmLabel="确认删除"
-        onCancel={() => setConfirmVisible(false)}
-        onConfirm={() => void deleteSelected()}
-      />
     </Modal>
   );
 }

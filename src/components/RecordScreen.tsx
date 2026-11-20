@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -16,8 +17,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { FocusSessionState } from '../hooks/useFocusSessions';
+import { useChime } from '../hooks/useChime';
+import { getChime } from '../chimes';
 import { colors, radii, shadows } from '../theme';
 import type { FocusSession, TimerMode } from '../types';
+import { ChimePickerModal } from './ChimePickerModal';
+import { ConfirmDialog } from './ConfirmDialog';
+import { TimerDial } from './TimerDial';
 
 type TimerStatus = 'idle' | 'running' | 'paused';
 
@@ -71,27 +77,56 @@ function isToday(value: string) {
   );
 }
 
-function SessionRow({ session }: { session: FocusSession }) {
+function SessionRow({
+  session,
+  selecting,
+  selected,
+  onToggle,
+}: {
+  session: FocusSession;
+  selecting: boolean;
+  selected: boolean;
+  onToggle: () => void;
+}) {
   const isCountdown = session.mode === 'countdown';
 
   return (
-    <View style={styles.sessionRow}>
-      <View
-        style={[
-          styles.sessionIcon,
-          {
-            backgroundColor: isCountdown
-              ? colors.accentSoft
-              : colors.longTermSoft,
-          },
-        ]}
-      >
-        <Ionicons
-          name={isCountdown ? 'hourglass-outline' : 'infinite-outline'}
-          size={18}
-          color={isCountdown ? colors.accent : colors.longTerm}
-        />
-      </View>
+    <Pressable
+      disabled={!selecting}
+      accessibilityRole={selecting ? 'checkbox' : undefined}
+      accessibilityState={selecting ? { checked: selected } : undefined}
+      onPress={onToggle}
+      style={[styles.sessionRow, selected && styles.sessionRowSelected]}
+    >
+      {selecting ? (
+        <View
+          style={[
+            styles.sessionCheckbox,
+            selected && styles.sessionCheckboxActive,
+          ]}
+        >
+          {selected ? (
+            <Ionicons name="checkmark" size={14} color={colors.white} />
+          ) : null}
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.sessionIcon,
+            {
+              backgroundColor: isCountdown
+                ? colors.accentSoft
+                : colors.longTermSoft,
+            },
+          ]}
+        >
+          <Ionicons
+            name={isCountdown ? 'hourglass-outline' : 'infinite-outline'}
+            size={18}
+            color={isCountdown ? colors.accent : colors.longTerm}
+          />
+        </View>
+      )}
       <View style={styles.sessionCopy}>
         <Text style={styles.sessionTitle}>{session.note}</Text>
         <Text style={styles.sessionMeta}>
@@ -101,16 +136,21 @@ function SessionRow({ session }: { session: FocusSession }) {
       <Text style={styles.sessionDuration}>
         {formatDuration(session.elapsedSeconds)}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
 export function RecordScreen({
   focusState,
+  userId,
 }: {
   focusState: FocusSessionState;
+  userId?: string;
 }) {
   const insets = useSafeAreaInsets();
+  const { chimeId, setChimeId } = useChime(userId);
+  const selectedChime = getChime(chimeId);
+  const chimePlayer = useAudioPlayer(selectedChime.source);
   const [mode, setMode] = useState<TimerMode>('countdown');
   const [durationMinutes, setDurationMinutes] = useState('25');
   const [note, setNote] = useState('专注学习');
@@ -123,6 +163,12 @@ export function RecordScreen({
   const [durationModalVisible, setDurationModalVisible] = useState(false);
   const [draftMinutes, setDraftMinutes] = useState('25');
   const [immersiveVisible, setImmersiveVisible] = useState(false);
+  const [chimePickerVisible, setChimePickerVisible] = useState(false);
+  const [isRecordSelecting, setIsRecordSelecting] = useState(false);
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [recordDeleteConfirm, setRecordDeleteConfirm] = useState(false);
   const completionHandled = useRef(false);
 
   const durationSeconds = Math.max(
@@ -139,12 +185,21 @@ export function RecordScreen({
       : elapsedSeconds;
   const displaySeconds =
     mode === 'countdown' ? remainingSeconds : elapsedSeconds;
+  const dialProgress =
+    mode === 'countdown'
+      ? durationSeconds === 0
+        ? 0
+        : remainingSeconds / durationSeconds
+      : (elapsedSeconds % 60) / 60;
   const todaySessions = focusState.sessions.filter((session) =>
     isToday(session.endedAt),
   );
   const todaySeconds = todaySessions.reduce(
     (total, session) => total + session.elapsedSeconds,
     0,
+  );
+  const selectedTodaySessions = todaySessions.filter((session) =>
+    selectedSessionIds.has(session.id),
   );
 
   useEffect(() => {
@@ -156,6 +211,14 @@ export function RecordScreen({
 
     return () => clearInterval(interval);
   }, [status]);
+
+  useEffect(() => {
+    chimePlayer.replace(selectedChime.source);
+  }, [chimePlayer, selectedChime.id, selectedChime.source]);
+
+  useEffect(() => {
+    void setAudioModeAsync({ playsInSilentMode: true });
+  }, []);
 
   useEffect(() => {
     if (
@@ -252,6 +315,12 @@ export function RecordScreen({
       setNowMs(Date.now());
       completionHandled.current = false;
       setImmersiveVisible(false);
+      try {
+        await chimePlayer.seekTo(0);
+        chimePlayer.play();
+      } catch {
+        // The visual completion alert still works if audio is unavailable.
+      }
       Alert.alert(
         mode === 'countdown' && finishedNaturally
           ? '倒计时完成'
@@ -286,6 +355,26 @@ export function RecordScreen({
     completionHandled.current = false;
     setDurationModalVisible(false);
     setImmersiveVisible(true);
+  }
+
+  function toggleSessionSelection(session: FocusSession) {
+    setSelectedSessionIds((current) => {
+      const next = new Set(current);
+      if (next.has(session.id)) next.delete(session.id);
+      else next.add(session.id);
+      return next;
+    });
+  }
+
+  function cancelSessionSelection() {
+    setIsRecordSelecting(false);
+    setSelectedSessionIds(new Set());
+  }
+
+  async function deleteSelectedSessions() {
+    setRecordDeleteConfirm(false);
+    const removed = await focusState.removeSessions(selectedTodaySessions);
+    if (removed) cancelSessionSelection();
   }
 
   return (
@@ -365,7 +454,7 @@ export function RecordScreen({
           onPress={openDurationPicker}
           style={styles.timerFace}
         >
-          <View style={styles.timerRing}>
+          <TimerDial progress={dialProgress}>
             <Text style={styles.timerDisplay}>{formatTimer(displaySeconds)}</Text>
             <Text style={styles.timerState}>
               {status === 'running'
@@ -376,8 +465,7 @@ export function RecordScreen({
                     ? `计划 ${durationMinutes || 0} 分钟 · 点击调整`
                     : '准备好时开始'}
             </Text>
-          </View>
-          <View style={styles.timerAccent} />
+          </TimerDial>
         </Pressable>
 
         <View style={styles.timerActions}>
@@ -469,6 +557,25 @@ export function RecordScreen({
           style={styles.noteInput}
         />
 
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setChimePickerVisible(true)}
+          style={styles.chimeRow}
+        >
+          <View style={styles.chimeIcon}>
+            <Ionicons
+              name="musical-notes-outline"
+              size={18}
+              color={colors.longTerm}
+            />
+          </View>
+          <View style={styles.chimeCopy}>
+            <Text style={styles.chimeLabel}>{selectedChime.label}</Text>
+            <Text style={styles.chimeHint}>结束铃声 · 点击试听和更换</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
+        </Pressable>
+
         {mode === 'countdown' ? (
           <Pressable
             accessibilityRole="button"
@@ -517,19 +624,53 @@ export function RecordScreen({
 
       <View style={styles.historyHeader}>
         <View>
-          <Text style={styles.historyTitle}>计时记录</Text>
-          <Text style={styles.historyHint}>每一次开始都值得留下</Text>
+          <Text style={styles.historyTitle}>Today's focus</Text>
+          <Text style={styles.historyHint}>只显示今天的计时记录</Text>
         </View>
-        <Text style={styles.historyCount}>
-          {focusState.sessions.length} 条
-        </Text>
+        <View style={styles.historyActions}>
+          <Text style={styles.historyCount}>{todaySessions.length} 条</Text>
+          {todaySessions.length > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                if (isRecordSelecting) cancelSessionSelection();
+                else setIsRecordSelecting(true);
+              }}
+              style={styles.historyDeleteButton}
+            >
+              <Text style={styles.historyDeleteText}>
+                {isRecordSelecting ? 'cancel' : 'delete'}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
+
+      {isRecordSelecting ? (
+        <View style={styles.recordSelectionBar}>
+          <Text style={styles.recordSelectionText}>
+            已选择 {selectedTodaySessions.length} 条
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            disabled={selectedTodaySessions.length === 0}
+            onPress={() => setRecordDeleteConfirm(true)}
+            style={[
+              styles.recordDeleteSelected,
+              selectedTodaySessions.length === 0 &&
+                styles.recordDeleteSelectedDisabled,
+            ]}
+          >
+            <Text style={styles.recordDeleteSelectedText}>delete selected</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {focusState.isLoading ? (
         <View style={styles.historyLoading}>
           <ActivityIndicator color={colors.accent} />
         </View>
-      ) : focusState.sessions.length === 0 ? (
+      ) : todaySessions.length === 0 ? (
         <View style={styles.emptyHistory}>
           <Ionicons name="time-outline" size={28} color={colors.inkFaint} />
           <Text style={styles.emptyHistoryTitle}>还没有计时记录</Text>
@@ -539,8 +680,14 @@ export function RecordScreen({
         </View>
       ) : (
         <View style={styles.sessionList}>
-          {focusState.sessions.slice(0, 20).map((session) => (
-            <SessionRow key={session.id} session={session} />
+          {todaySessions.map((session) => (
+            <SessionRow
+              key={session.id}
+              session={session}
+              selecting={isRecordSelecting}
+              selected={selectedSessionIds.has(session.id)}
+              onToggle={() => toggleSessionSelection(session)}
+            />
           ))}
         </View>
       )}
@@ -738,6 +885,22 @@ export function RecordScreen({
           </View>
         </View>
       </Modal>
+
+      <ChimePickerModal
+        visible={chimePickerVisible}
+        selectedId={chimeId}
+        onClose={() => setChimePickerVisible(false)}
+        onSelect={(id) => void setChimeId(id)}
+      />
+
+      <ConfirmDialog
+        visible={recordDeleteConfirm}
+        title="Delete focus records?"
+        description={`将永久移除 ${selectedTodaySessions.length} 条今日计时记录。`}
+        confirmLabel="delete"
+        onCancel={() => setRecordDeleteConfirm(false)}
+        onConfirm={() => void deleteSelectedSessions()}
+      />
     </View>
   );
 }
@@ -968,6 +1131,39 @@ const styles = StyleSheet.create({
     color: colors.inkFaint,
     fontSize: 9,
   },
+  chimeRow: {
+    minHeight: 53,
+    marginTop: 10,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  chimeIcon: {
+    width: 31,
+    height: 31,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: colors.longTermSoft,
+  },
+  chimeCopy: {
+    flex: 1,
+  },
+  chimeLabel: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  chimeHint: {
+    marginTop: 3,
+    color: colors.inkFaint,
+    fontSize: 9,
+  },
   durationLabel: {
     marginTop: 16,
     color: colors.inkSoft,
@@ -1099,6 +1295,55 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+  historyActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  historyDeleteButton: {
+    height: 30,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#F1E5DB',
+  },
+  historyDeleteText: {
+    color: colors.danger,
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  recordSelectionBar: {
+    minHeight: 44,
+    marginBottom: 9,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: radii.sm,
+    backgroundColor: '#F1E5DB',
+  },
+  recordSelectionText: {
+    color: colors.secondary,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  recordDeleteSelected: {
+    height: 31,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+  },
+  recordDeleteSelectedDisabled: {
+    opacity: 0.35,
+  },
+  recordDeleteSelectedText: {
+    color: colors.white,
+    fontSize: 9,
+    fontWeight: '800',
+  },
   historyLoading: {
     minHeight: 100,
     alignItems: 'center',
@@ -1137,6 +1382,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
+  },
+  sessionRowSelected: {
+    backgroundColor: colors.secondarySoft,
+    borderColor: colors.secondary,
+  },
+  sessionCheckbox: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+  },
+  sessionCheckboxActive: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
   },
   sessionIcon: {
     width: 36,

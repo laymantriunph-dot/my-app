@@ -9,8 +9,11 @@
 当前版本分为「朝计」与「记录」两个主栏目：
 
 - **朝计**：将当天待办分为「Primary / Secondly.」，将长期事项放入「遐筹」，并且只在朝计清单显示当日可展开的已完成区域。
-- **记录**：点击中央计时圆设置倒计时，提供自定义倒计时和正计时，开始后自动进入全屏沉浸模式，并保存每次专注的时长、名称和时间。
-- **Accomplished**：完成事项自动按「朝计 / 遐筹」并列保存，可勾选记录后批量抹除。
+- **记录**：点击中央计时圆设置倒计时，选择时长后点击 `Begin!` 开始；支持自定义倒计时、正计时、全屏沉浸模式和结束铃声。
+- **Accomplished**：完成事项自动按「朝计 / 遐筹」并列保存，可勾选记录后批量 `delete`。
+- **Focus**：与 Accomplished 并列，用于查看和筛选全部计时记录；记录页本身只显示当天记录。
+
+计时结束提供 10 个本地柔和铃声：Zen Bowl、Morning Bell、Air Chime、Wooden Fish、Water Drop、Deep Gong、Two-Note Rise、Crystal Echo、Quiet Harp 和 Focus Bell，可在记录页试听并切换。
 
 同时支持本地离线保存，以及 Google、Outlook、QQ 三种账号登录后的云端同步。
 

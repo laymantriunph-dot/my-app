@@ -197,9 +197,10 @@ export function useArchives(userId?: string): ArchiveState {
     completionLocks.current.add(lockKey);
     const existing = archivesRef.current.find(
       (archive) =>
-        archive.kind === 'completed' &&
-        archive.category === task.category &&
-        archive.recordDate === recordDate,
+        archive.tasks.some((item) => item.id === task.id) &&
+        (archive.kind !== 'completed' ||
+          (archive.category === task.category &&
+            archive.recordDate === recordDate)),
     );
     if (!existing) {
       completionLocks.current.delete(lockKey);

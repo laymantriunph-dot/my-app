@@ -15,6 +15,7 @@ import { CATEGORY_META } from '../taskUtils';
 import { colors, radii, shadows } from '../theme';
 import {
   ACTIVE_TASK_CATEGORIES,
+  type Task,
   type TaskArchive,
 } from '../types';
 
@@ -24,7 +25,7 @@ type ArchiveModalProps = {
   isLoading: boolean;
   error: string | null;
   onClose: () => void;
-  onDelete: (archives: TaskArchive[]) => Promise<boolean>;
+  onDelete: (tasks: Task[]) => Promise<boolean>;
 };
 
 function formatArchiveDate(value: string) {
@@ -47,9 +48,15 @@ export function ArchiveModal({
   const insets = useSafeAreaInsets();
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const selectedArchives = archives.filter((archive) =>
-    selectedIds.has(archive.id),
+  const archiveItems = archives.flatMap((archive) =>
+    archive.tasks.map((task) => ({
+      archive,
+      task,
+    })),
   );
+  const selectedTasks = archiveItems
+    .filter((item) => selectedIds.has(item.task.id))
+    .map((item) => item.task);
   const groupedArchives = ACTIVE_TASK_CATEGORIES.map((category) => ({
     category,
     archives: archives.filter(
@@ -59,11 +66,11 @@ export function ArchiveModal({
     ),
   }));
 
-  function toggleSelected(archive: TaskArchive) {
+  function toggleSelected(task: Task) {
     setSelectedIds((current) => {
       const next = new Set(current);
-      if (next.has(archive.id)) next.delete(archive.id);
-      else next.add(archive.id);
+      if (next.has(task.id)) next.delete(task.id);
+      else next.add(task.id);
       return next;
     });
   }
@@ -74,8 +81,8 @@ export function ArchiveModal({
   }
 
   async function deleteSelected() {
-    if (selectedArchives.length === 0) return;
-    const removed = await onDelete(selectedArchives);
+    if (selectedTasks.length === 0) return;
+    const removed = await onDelete(selectedTasks);
     if (removed) cancelSelection();
   }
 
@@ -157,15 +164,15 @@ export function ArchiveModal({
           {isSelecting ? (
             <View style={styles.selectionBar}>
               <Text style={styles.selectionText}>
-                已选择 {selectedArchives.length} 条记录
+                已选择 {selectedTasks.length} 个任务
               </Text>
               <Pressable
                 accessibilityRole="button"
-                disabled={selectedArchives.length === 0}
+                disabled={selectedTasks.length === 0}
                 onPress={() => void deleteSelected()}
                 style={[
                   styles.deleteSelectedButton,
-                  selectedArchives.length === 0 &&
+                  selectedTasks.length === 0 &&
                     styles.deleteSelectedDisabled,
                 ]}
               >
@@ -223,68 +230,82 @@ export function ArchiveModal({
                       </Text>
                     </View>
 
-                    {group.archives.length === 0 ? (
+                    {group.archives.every(
+                      (archive) => archive.tasks.length === 0,
+                    ) ? (
                       <View style={styles.groupEmpty}>
                         <Text style={styles.groupEmptyText}>
                           暂无{meta.label}完成记录
                         </Text>
                       </View>
                     ) : (
-                      group.archives.map((archive) => {
-                        const selected = selectedIds.has(archive.id);
+                      group.archives.flatMap((archive) =>
+                        archive.tasks.map((task) => {
+                          const selected = selectedIds.has(task.id);
 
-                        return (
-                          <Pressable
-                            key={archive.id}
-                            accessibilityRole={
-                              isSelecting ? 'checkbox' : undefined
-                            }
-                            accessibilityState={
-                              isSelecting ? { checked: selected } : undefined
-                            }
-                            disabled={!isSelecting}
-                            onPress={() => toggleSelected(archive)}
-                            style={[
-                              styles.archiveCard,
-                              selected && styles.archiveCardSelected,
-                            ]}
-                          >
-                            {isSelecting ? (
-                              <View
-                                style={[
-                                  styles.selectionCircle,
-                                  selected && styles.selectionCircleActive,
-                                ]}
-                              >
-                                {selected ? (
+                          return (
+                            <Pressable
+                              key={`${archive.id}:${task.id}`}
+                              accessibilityRole={
+                                isSelecting ? 'checkbox' : undefined
+                              }
+                              accessibilityState={
+                                isSelecting ? { checked: selected } : undefined
+                              }
+                              disabled={!isSelecting}
+                              onPress={() => toggleSelected(task)}
+                              style={[
+                                styles.archiveCard,
+                                selected && styles.archiveCardSelected,
+                              ]}
+                            >
+                              {isSelecting ? (
+                                <View
+                                  style={[
+                                    styles.selectionCircle,
+                                    selected && styles.selectionCircleActive,
+                                  ]}
+                                >
+                                  {selected ? (
+                                    <Ionicons
+                                      name="checkmark"
+                                      size={14}
+                                      color={colors.white}
+                                    />
+                                  ) : null}
+                                </View>
+                              ) : (
+                                <View
+                                  style={[
+                                    styles.taskCheck,
+                                    { borderColor: meta.color },
+                                  ]}
+                                >
                                   <Ionicons
                                     name="checkmark"
-                                    size={14}
-                                    color={colors.white}
+                                    size={13}
+                                    color={meta.color}
                                   />
-                                ) : null}
+                                </View>
+                              )}
+                              <View style={styles.archiveCopy}>
+                                <Text
+                                  numberOfLines={2}
+                                  style={styles.archiveTitle}
+                                >
+                                  {task.title}
+                                </Text>
+                                <Text style={styles.archiveMeta}>
+                                  {task.category === 'today'
+                                    ? `${meta.label} · ${task.priority === 'primary' ? 'Primary' : 'Secondly.'}`
+                                    : meta.label}{' '}
+                                  · {formatArchiveDate(archive.archivedAt)}
+                                </Text>
                               </View>
-                            ) : null}
-                            <View style={styles.archiveCopy}>
-                              <Text style={styles.archiveTitle}>
-                                {archive.title}
-                              </Text>
-                              <Text style={styles.archiveMeta}>
-                                {formatArchiveDate(archive.archivedAt)} ·{' '}
-                                {archive.taskCount} 项完成
-                              </Text>
-                              <Text
-                                numberOfLines={2}
-                                style={styles.archivePreview}
-                              >
-                                {archive.tasks
-                                  .map((task) => task.title)
-                                  .join(' · ')}
-                              </Text>
-                            </View>
-                          </Pressable>
-                        );
-                      })
+                            </Pressable>
+                          );
+                        }),
+                      )
                     )}
                     </View>
                   );
@@ -564,6 +585,15 @@ const styles = StyleSheet.create({
   },
   archiveCopy: {
     flex: 1,
+  },
+  taskCheck: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: colors.surface,
   },
   archiveTitle: {
     color: colors.ink,

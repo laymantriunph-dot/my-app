@@ -734,7 +734,10 @@ export function RecordScreen({
                         key={minutes}
                         accessibilityRole="radio"
                         accessibilityState={{ selected }}
-                        onPress={() => setDraftMinutes(String(minutes))}
+                        onPress={() => {
+                          setDraftMinutes(String(minutes));
+                          setDurationMinutes(String(minutes));
+                        }}
                         style={[
                           styles.durationOption,
                           selected && styles.durationOptionSelected,
@@ -765,9 +768,16 @@ export function RecordScreen({
                   <Text style={styles.customLabel}>自定义时长</Text>
                   <TextInput
                     value={draftMinutes}
-                    onChangeText={(value) =>
-                      setDraftMinutes(value.replace(/[^\d]/g, ''))
-                    }
+                    onChangeText={(value) => {
+                      const sanitized = value.replace(/[^\d]/g, '');
+                      setDraftMinutes(sanitized);
+                      const nextMinutes = Number(sanitized);
+                      if (nextMinutes > 0) {
+                        setDurationMinutes(
+                          String(Math.min(600, nextMinutes)),
+                        );
+                      }
+                    }}
                     keyboardType="number-pad"
                     maxLength={3}
                     selectTextOnFocus

@@ -203,6 +203,24 @@ export function HomeScreen({
     }
   }
 
+  async function deleteAccomplishedTasks(tasks: Task[]) {
+    let success = true;
+
+    for (const task of tasks) {
+      if (!task.completedAt) {
+        success = false;
+        continue;
+      }
+      const removed = await archiveState.unrecordCompletedTask(
+        task,
+        task.completedAt,
+      );
+      if (!removed) success = false;
+    }
+
+    return success;
+  }
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTodayKey(getLocalDateKey());
@@ -734,7 +752,7 @@ export function HomeScreen({
         isLoading={archiveState.isLoading}
         error={archiveState.error}
         onClose={() => setArchiveVisible(false)}
-        onDelete={archiveState.removeArchives}
+        onDelete={deleteAccomplishedTasks}
       />
 
       <FocusHistoryModal

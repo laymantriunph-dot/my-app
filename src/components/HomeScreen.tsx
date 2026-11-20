@@ -11,8 +11,12 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
+import { useArchives } from '../hooks/useArchives';
 import type { TaskState } from '../hooks/useTasks';
 import type { AuthUser } from '../lib/supabase';
 import {
@@ -29,6 +33,8 @@ import {
   type Task,
   type TaskCategory,
 } from '../types';
+import { ArchiveModal } from './ArchiveModal';
+import { RecordScreen } from './RecordScreen';
 import { TaskComposer } from './TaskComposer';
 import { TaskItem } from './TaskItem';
 
@@ -39,15 +45,21 @@ type HomeScreenProps = {
   onSignOut: () => void;
 };
 
+type MainSection = 'energy' | 'records';
+
 export function HomeScreen({
   user,
   isLocal,
   taskState,
   onSignOut,
 }: HomeScreenProps) {
+  const insets = useSafeAreaInsets();
+  const archiveState = useArchives(user?.id);
+  const [activeSection, setActiveSection] = useState<MainSection>('energy');
   const [activeCategory, setActiveCategory] =
     useState<TaskCategory>('today');
   const [composerVisible, setComposerVisible] = useState(false);
+  const [archiveVisible, setArchiveVisible] = useState(false);
   const stats = getTaskStats(taskState.tasks);
   const visibleTasks = useMemo(
     () =>
@@ -56,9 +68,14 @@ export function HomeScreen({
       ),
     [activeCategory, taskState.tasks],
   );
+  const pendingTasks = visibleTasks.filter((task) => !task.isCompleted);
+  const completedTasks = visibleTasks.filter((task) => task.isCompleted);
   const activeMeta = CATEGORY_META[activeCategory];
   const displayName = getDisplayName(user?.email);
   const avatarLetter = (displayName[0] ?? '我').toUpperCase();
+  const allPendingCount = taskState.tasks.filter(
+    (task) => !task.isCompleted,
+  ).length;
 
   function confirmDelete(task: Task) {
     Alert.alert('删除待办？', task.title, [
@@ -94,39 +111,24 @@ export function HomeScreen({
     );
   }
 
+  async function saveCurrentTasks() {
+    if (visibleTasks.length === 0) {
+      Alert.alert('当前清单为空', '先添加一两条待办，再保存为历史快照。');
+      return;
+    }
+
+    const saved = await archiveState.saveArchive(
+      activeCategory,
+      visibleTasks,
+    );
+
+    if (saved) {
+      Alert.alert('已保存', '这份清单已存入历史，当前待办不会改变。');
+    }
+  }
+
   const listHeader = (
     <View>
-      <View style={styles.topBar}>
-        <View style={styles.brandRow}>
-          <View style={styles.miniMark}>
-            <Text style={styles.miniMarkText}>三</Text>
-          </View>
-          <View>
-            <Text style={styles.brandName}>三分待办</Text>
-            <Text style={styles.syncMode}>
-              {isLocal ? '仅保存在本机' : '云端同步已开启'}
-            </Text>
-          </View>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="账号信息"
-          onPress={openAccountMenu}
-          style={({ pressed }) => [
-            styles.avatar,
-            pressed && styles.avatarPressed,
-          ]}
-        >
-          <Text style={styles.avatarText}>{avatarLetter}</Text>
-          <View
-            style={[
-              styles.accountDot,
-              { backgroundColor: isLocal ? colors.secondary : colors.success },
-            ]}
-          />
-        </Pressable>
-      </View>
-
       <View style={styles.greetingBlock}>
         <Text style={styles.dateLabel}>{getTodayLabel()}</Text>
         <Text style={styles.greeting}>{getGreeting()}，{displayName}</Text>
@@ -221,15 +223,53 @@ export function HomeScreen({
         })}
       </View>
 
-      {taskState.error ? (
+      <View style={styles.todoTools}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={visibleTasks.length === 0}
+          onPress={() => void saveCurrentTasks()}
+          style={({ pressed }) => [
+            styles.saveListButton,
+            visibleTasks.length === 0 && styles.toolDisabled,
+            pressed && styles.toolPressed,
+          ]}
+        >
+          <Ionicons name="archive-outline" size={17} color={colors.ink} />
+          <Text style={styles.saveListText}>保存当前清单</Text>
+          <Text style={styles.saveListCount}>{visibleTasks.length} 项</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setArchiveVisible(true)}
+          style={({ pressed }) => [
+            styles.historyButton,
+            pressed && styles.toolPressed,
+          ]}
+        >
+          <Ionicons name="albums-outline" size={17} color={colors.inkSoft} />
+          <Text style={styles.historyButtonText}>
+            历史 {archiveState.archives.length}
+          </Text>
+        </Pressable>
+      </View>
+
+      {taskState.error || archiveState.error ? (
         <View style={styles.errorBanner}>
           <Ionicons
             name="cloud-offline-outline"
             size={18}
             color={colors.danger}
           />
-          <Text style={styles.errorBannerText}>{taskState.error}</Text>
-          <Pressable onPress={taskState.clearError} hitSlop={10}>
+          <Text style={styles.errorBannerText}>
+            {taskState.error ?? archiveState.error}
+          </Text>
+          <Pressable
+            onPress={() => {
+              taskState.clearError();
+              archiveState.clearError();
+            }}
+            hitSlop={10}
+          >
             <Ionicons name="close" size={18} color={colors.danger} />
           </Pressable>
         </View>
@@ -240,7 +280,9 @@ export function HomeScreen({
           <Text style={styles.listTitle}>{activeMeta.label}清单</Text>
           <Text style={styles.listDescription}>{activeMeta.hint}</Text>
         </View>
-        <Text style={styles.listCount}>{visibleTasks.length} 项</Text>
+        <Text style={styles.listCount}>
+          {pendingTasks.length} 待办 · {completedTasks.length} 完成
+        </Text>
       </View>
 
       {taskState.isLoading ? (
@@ -254,72 +296,249 @@ export function HomeScreen({
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={styles.listFrame}>
-        <FlatList
-          data={taskState.isLoading ? [] : visibleTasks}
-          keyExtractor={(task) => task.id}
-          renderItem={({ item }) => (
-            <TaskItem
-              task={item}
-              disabled={taskState.isMutating}
-              onToggle={() => void taskState.toggleTask(item)}
-              onDelete={() => confirmDelete(item)}
+      <View style={styles.appShell}>
+        <View style={styles.topBar}>
+          <View style={styles.brandRow}>
+            <View style={styles.miniMark}>
+              <Text style={styles.miniMarkText}>三</Text>
+            </View>
+            <View>
+              <Text style={styles.brandName}>三分待办</Text>
+              <Text style={styles.syncMode}>
+                {isLocal ? '仅保存在本机' : '云端同步已开启'}
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="账号信息"
+            onPress={openAccountMenu}
+            style={({ pressed }) => [
+              styles.avatar,
+              pressed && styles.avatarPressed,
+            ]}
+          >
+            <Text style={styles.avatarText}>{avatarLetter}</Text>
+            <View
+              style={[
+                styles.accountDot,
+                {
+                  backgroundColor: isLocal
+                    ? colors.secondary
+                    : colors.success,
+                },
+              ]}
             />
-          )}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          ListHeaderComponent={listHeader}
-          ListEmptyComponent={
-            taskState.isLoading ? undefined : (
-              <View style={styles.emptyState}>
-                <View
-                  style={[
-                    styles.emptyIcon,
-                    { backgroundColor: activeMeta.softColor },
-                  ]}
-                >
-                  <Ionicons
-                    name={activeMeta.icon}
-                    size={28}
-                    color={activeMeta.color}
-                  />
-                </View>
-                <Text style={styles.emptyTitle}>这一栏还是空的</Text>
-                <Text style={styles.emptyDescription}>
-                  写下一件具体、能开始行动的事。
-                </Text>
-              </View>
-            )
-          }
-          ListFooterComponent={
-            <Text style={styles.footerText}>
-              {isLocal ? '本地数据仅保存在当前设备' : '任务已通过加密连接同步'}
-            </Text>
-          }
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={false}
-              onRefresh={() => void taskState.refresh()}
-              tintColor={colors.accent}
-              colors={[colors.accent]}
-            />
-          }
-        />
-      </View>
+          </Pressable>
+        </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="添加待办"
-        onPress={() => setComposerVisible(true)}
-        style={({ pressed }) => [
-          styles.addButton,
-          pressed && styles.addButtonPressed,
-        ]}
-      >
-        <Ionicons name="add" size={26} color={colors.white} />
-        <Text style={styles.addButtonText}>添加待办</Text>
-      </Pressable>
+        <View style={styles.pages}>
+          <View
+            style={[
+              styles.page,
+              activeSection !== 'energy' && styles.hiddenPage,
+            ]}
+          >
+            <View style={styles.listFrame}>
+              <FlatList
+                data={taskState.isLoading ? [] : pendingTasks}
+                keyExtractor={(task) => task.id}
+                renderItem={({ item }) => (
+                  <TaskItem
+                    task={item}
+                    disabled={taskState.isMutating}
+                    onToggle={() => void taskState.toggleTask(item)}
+                    onDelete={() => confirmDelete(item)}
+                  />
+                )}
+                ItemSeparatorComponent={() => (
+                  <View style={styles.separator} />
+                )}
+                ListHeaderComponent={listHeader}
+                ListEmptyComponent={
+                  taskState.isLoading ? undefined : (
+                    <View style={styles.emptyState}>
+                      <View
+                        style={[
+                          styles.emptyIcon,
+                          { backgroundColor: activeMeta.softColor },
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            completedTasks.length > 0
+                              ? 'checkmark-done-outline'
+                              : activeMeta.icon
+                          }
+                          size={28}
+                          color={activeMeta.color}
+                        />
+                      </View>
+                      <Text style={styles.emptyTitle}>
+                        {completedTasks.length > 0
+                          ? '这一栏已经清空'
+                          : '这一栏还是空的'}
+                      </Text>
+                      <Text style={styles.emptyDescription}>
+                        {completedTasks.length > 0
+                          ? '完成的任务保存在下方，随时可以回看。'
+                          : '写下一件具体、能开始行动的事。'}
+                      </Text>
+                    </View>
+                  )
+                }
+                ListFooterComponent={
+                  <View>
+                    {completedTasks.length > 0 ? (
+                      <View style={styles.completedSection}>
+                        <View style={styles.completedHeader}>
+                          <View style={styles.completedTitleRow}>
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={18}
+                              color={colors.success}
+                            />
+                            <Text style={styles.completedTitle}>已完成</Text>
+                          </View>
+                          <Text style={styles.completedCount}>
+                            {completedTasks.length} 项
+                          </Text>
+                        </View>
+                        <View style={styles.completedList}>
+                          {completedTasks.map((task) => (
+                            <TaskItem
+                              key={task.id}
+                              task={task}
+                              disabled={taskState.isMutating}
+                              onToggle={() => void taskState.toggleTask(task)}
+                              onDelete={() => confirmDelete(task)}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    ) : null}
+                    <Text style={styles.footerText}>
+                      {isLocal
+                        ? '本地数据仅保存在当前设备'
+                        : '任务已通过加密连接同步'}
+                    </Text>
+                  </View>
+                }
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={false}
+                    onRefresh={() => void taskState.refresh()}
+                    tintColor={colors.accent}
+                    colors={[colors.accent]}
+                  />
+                }
+              />
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="添加待办"
+              onPress={() => setComposerVisible(true)}
+              style={({ pressed }) => [
+                styles.addButton,
+                pressed && styles.addButtonPressed,
+              ]}
+            >
+              <Ionicons name="add" size={26} color={colors.white} />
+              <Text style={styles.addButtonText}>添加待办</Text>
+            </Pressable>
+          </View>
+
+          <View
+            style={[
+              styles.page,
+              activeSection !== 'records' && styles.hiddenPage,
+            ]}
+          >
+            <RecordScreen userId={user?.id} />
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.bottomNav,
+            { paddingBottom: Math.max(insets.bottom, 10) },
+          ]}
+        >
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeSection === 'energy' }}
+            onPress={() => setActiveSection('energy')}
+            style={styles.navItem}
+          >
+            <View
+              style={[
+                styles.navIcon,
+                activeSection === 'energy' && styles.navIconActive,
+              ]}
+            >
+              <Ionicons
+                name={
+                  activeSection === 'energy' ? 'layers' : 'layers-outline'
+                }
+                size={21}
+                color={
+                  activeSection === 'energy' ? colors.white : colors.inkFaint
+                }
+              />
+              {allPendingCount > 0 ? (
+                <View style={styles.navBadge}>
+                  <Text style={styles.navBadgeText}>
+                    {allPendingCount > 99 ? '99+' : allPendingCount}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <Text
+              style={[
+                styles.navLabel,
+                activeSection === 'energy' && styles.navLabelActive,
+              ]}
+            >
+              蓄能
+            </Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeSection === 'records' }}
+            onPress={() => setActiveSection('records')}
+            style={styles.navItem}
+          >
+            <View
+              style={[
+                styles.navIcon,
+                activeSection === 'records' && styles.navIconActive,
+              ]}
+            >
+              <Ionicons
+                name={
+                  activeSection === 'records' ? 'timer' : 'timer-outline'
+                }
+                size={21}
+                color={
+                  activeSection === 'records' ? colors.white : colors.inkFaint
+                }
+              />
+            </View>
+            <Text
+              style={[
+                styles.navLabel,
+                activeSection === 'records' && styles.navLabelActive,
+              ]}
+            >
+              记录
+            </Text>
+          </Pressable>
+        </View>
+      </View>
 
       <TaskComposer
         visible={composerVisible}
@@ -327,6 +546,18 @@ export function HomeScreen({
         isSubmitting={taskState.isMutating}
         onClose={() => setComposerVisible(false)}
         onSubmit={taskState.addTask}
+      />
+
+      <ArchiveModal
+        visible={archiveVisible}
+        category={activeCategory}
+        currentTasks={visibleTasks}
+        archives={archiveState.archives}
+        isLoading={archiveState.isLoading}
+        error={archiveState.error}
+        onClose={() => setArchiveVisible(false)}
+        onSave={archiveState.saveArchive}
+        onDelete={archiveState.removeArchive}
       />
     </SafeAreaView>
   );
@@ -337,15 +568,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.canvas,
   },
+  appShell: {
+    flex: 1,
+  },
+  pages: {
+    flex: 1,
+  },
+  page: {
+    flex: 1,
+  },
+  hiddenPage: {
+    display: 'none',
+  },
   listFrame: {
     flex: 1,
     marginHorizontal: 20,
   },
   listContent: {
     paddingTop: 8,
-    paddingBottom: 128,
+    paddingBottom: 104,
   },
   topBar: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -561,6 +807,53 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
   },
+  todoTools: {
+    marginTop: 14,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  saveListButton: {
+    flex: 1,
+    minHeight: 48,
+    paddingHorizontal: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 15,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  saveListText: {
+    flex: 1,
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  saveListCount: {
+    color: colors.inkFaint,
+    fontSize: 10,
+  },
+  historyButton: {
+    minHeight: 48,
+    paddingHorizontal: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 15,
+    backgroundColor: colors.surfaceMuted,
+  },
+  historyButtonText: {
+    color: colors.inkSoft,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  toolDisabled: {
+    opacity: 0.4,
+  },
+  toolPressed: {
+    opacity: 0.68,
+  },
   errorBanner: {
     marginTop: 14,
     padding: 12,
@@ -600,6 +893,32 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 9,
+  },
+  completedSection: {
+    marginTop: 26,
+  },
+  completedHeader: {
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  completedTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  completedTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  completedCount: {
+    color: colors.inkFaint,
+    fontSize: 10,
+  },
+  completedList: {
+    gap: 9,
   },
   loadingState: {
     minHeight: 130,
@@ -672,5 +991,58 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 14,
     fontWeight: '800',
+  },
+  bottomNav: {
+    minHeight: 68,
+    paddingTop: 9,
+    paddingHorizontal: 52,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    backgroundColor: '#FCF8F0',
+  },
+  navItem: {
+    minWidth: 86,
+    alignItems: 'center',
+    gap: 4,
+  },
+  navIcon: {
+    width: 42,
+    height: 37,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navIconActive: {
+    backgroundColor: colors.ink,
+  },
+  navBadge: {
+    position: 'absolute',
+    right: 2,
+    top: 1,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    borderWidth: 1.5,
+    borderColor: '#FCF8F0',
+  },
+  navBadgeText: {
+    color: colors.white,
+    fontSize: 8,
+    fontWeight: '800',
+  },
+  navLabel: {
+    color: colors.inkFaint,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  navLabelActive: {
+    color: colors.ink,
   },
 });

@@ -25,6 +25,51 @@ export type TaskRow = {
   updated_at: string;
 };
 
+export type TaskArchive = {
+  id: string;
+  title: string;
+  category: TaskCategory;
+  tasks: Task[];
+  taskCount: number;
+  completedCount: number;
+  archivedAt: string;
+};
+
+export type TaskArchiveRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  category: TaskCategory;
+  tasks: Task[];
+  task_count: number;
+  completed_count: number;
+  archived_at: string;
+};
+
+export type TimerMode = 'countdown' | 'stopwatch';
+
+export type FocusSession = {
+  id: string;
+  mode: TimerMode;
+  note: string;
+  plannedSeconds: number;
+  elapsedSeconds: number;
+  startedAt: string;
+  endedAt: string;
+};
+
+export type FocusSessionRow = {
+  id: string;
+  user_id: string;
+  mode: TimerMode;
+  note: string;
+  planned_seconds: number;
+  elapsed_seconds: number;
+  started_at: string;
+  ended_at: string;
+  created_at: string;
+};
+
 export type AuthProfile = {
   user: AuthUser | null;
   isLocal: boolean;

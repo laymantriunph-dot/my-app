@@ -6,7 +6,12 @@
 - **长期**：需要持续推进、没有当天截止压力的事
 - **次重要**：有空时再处理的事
 
-当前版本支持新增、完成、删除、分类筛选、进度统计、本地离线保存，以及 Google、Outlook、QQ 三种账号登录后的云端同步。
+当前版本分为「蓄能」与「记录」两个主栏目：
+
+- **蓄能**：新增、完成、删除和分类筛选待办，保存历史清单快照，并在分类下方查看已完成事项。
+- **记录**：提供自定义倒计时和正计时，保存每次专注的时长、名称和时间。
+
+同时支持本地离线保存，以及 Google、Outlook、QQ 三种账号登录后的云端同步。
 
 ## 技术方案
 
@@ -30,9 +35,10 @@ npx expo start
 ## 配置 Supabase
 
 1. 在 [Supabase](https://supabase.com/) 创建项目。
-2. 打开项目的 SQL Editor，执行：
+2. 打开项目的 SQL Editor，依次执行：
 
    [`supabase/migrations/202611190001_create_tasks.sql`](supabase/migrations/202611190001_create_tasks.sql)
+   [`supabase/migrations/202611200001_add_archives_and_focus_sessions.sql`](supabase/migrations/202611200001_add_archives_and_focus_sessions.sql)
 
 3. 将 [`.env.example`](.env.example) 复制为 `.env`，填写 Project URL 和 Publishable key：
 

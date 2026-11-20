@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CATEGORY_META } from '../taskUtils';
+import { CATEGORY_META, PRIORITY_META } from '../taskUtils';
 import { colors, radii, shadows } from '../theme';
 import {
   ACTIVE_TASK_CATEGORIES,
@@ -53,6 +53,13 @@ function ArchiveTaskCard({
   onToggle,
 }: ArchiveTaskCardProps) {
   const meta = CATEGORY_META[task.category];
+  const priorityMeta = PRIORITY_META[task.priority];
+  const markerColor =
+    task.category === 'today' ? priorityMeta.color : meta.color;
+  const categoryLabel =
+    task.category === 'today'
+      ? `${meta.label} · ${priorityMeta.label}`
+      : meta.label;
 
   return (
     <Pressable
@@ -74,17 +81,22 @@ function ArchiveTaskCard({
           ) : null}
         </View>
       ) : (
-        <View style={[styles.taskCheck, { borderColor: meta.color }]}>
-          <Ionicons name="checkmark" size={13} color={meta.color} />
+        <View style={[styles.taskCheck, { backgroundColor: markerColor }]}>
+          <Ionicons name="checkmark" size={16} color={colors.white} />
         </View>
       )}
       <View style={styles.archiveCopy}>
-        <Text numberOfLines={2} style={styles.archiveTitle}>
+        <Text numberOfLines={2} style={styles.archiveCompletedTitle}>
           {task.title}
         </Text>
-        <Text style={styles.archiveMeta}>
-          {formatArchiveDate(archivedAt)}
-        </Text>
+        <View style={styles.archiveMetaRow}>
+          <View style={[styles.categoryDot, { backgroundColor: markerColor }]} />
+          <Text style={styles.archiveMetaStrong}>{categoryLabel}</Text>
+          <Text style={styles.archiveMetaStrong}>· 已完成</Text>
+          <Text style={styles.archiveMetaDate}>
+            {formatArchiveDate(archivedAt)}
+          </Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -622,11 +634,12 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   archiveCard: {
-    minHeight: 84,
+    minHeight: 82,
     marginBottom: 9,
-    padding: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 11,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 10,
     borderRadius: radii.md,
     backgroundColor: colors.surface,
@@ -652,30 +665,41 @@ const styles = StyleSheet.create({
   },
   archiveCopy: {
     flex: 1,
+    gap: 7,
   },
   taskCheck: {
-    width: 24,
-    height: 24,
+    width: 27,
+    height: 27,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    backgroundColor: colors.surface,
+    borderRadius: 9,
   },
-  archiveTitle: {
-    color: colors.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  archiveMeta: {
-    marginTop: 4,
+  archiveCompletedTitle: {
     color: colors.inkFaint,
-    fontSize: 10,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    textDecorationLine: 'line-through',
   },
-  archivePreview: {
-    marginTop: 6,
-    color: colors.inkSoft,
-    fontSize: 10,
-    lineHeight: 15,
+  archiveMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  categoryDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  archiveMetaStrong: {
+    color: colors.inkFaint,
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  archiveMetaDate: {
+    color: colors.inkFaint,
+    fontSize: 8,
+    opacity: 0.78,
   },
 });

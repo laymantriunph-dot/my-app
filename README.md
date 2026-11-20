@@ -33,6 +33,14 @@ npx expo start
 
 使用手机上的 Expo Go 扫描终端二维码即可预览。没有配置登录服务时，可以先点击“先在本机使用”，所有核心功能都能体验。
 
+生成可部署的静态网页版：
+
+```bash
+npm run build:web
+```
+
+生成结果位于 `web-dist/`，可以部署到任意支持静态网站的托管平台。
+
 ## 配置 Supabase
 
 1. 在 [Supabase](https://supabase.com/) 创建项目。

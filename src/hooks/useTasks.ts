@@ -10,14 +10,18 @@ import {
   writeTaskCache,
 } from '../lib/taskRepository';
 import { createLocalTask } from '../taskUtils';
-import type { Task, TaskCategory } from '../types';
+import type { Task, TaskCategory, TaskPriority } from '../types';
 
 export type TaskState = {
   tasks: Task[];
   isLoading: boolean;
   isMutating: boolean;
   error: string | null;
-  addTask: (title: string, category: TaskCategory) => Promise<boolean>;
+  addTask: (
+    title: string,
+    category: TaskCategory,
+    priority: TaskPriority,
+  ) => Promise<boolean>;
   toggleTask: (task: Task) => Promise<boolean>;
   removeTask: (task: Task) => Promise<boolean>;
   refresh: () => Promise<void>;
@@ -88,19 +92,28 @@ export function useTasks(userId?: string): TaskState {
     void load();
   }, [load]);
 
-  async function addTask(title: string, category: TaskCategory) {
+  async function addTask(
+    title: string,
+    category: TaskCategory,
+    priority: TaskPriority,
+  ) {
     const cleanTitle = title.trim();
 
     if (!cleanTitle) return false;
 
     setError(null);
     setIsMutating(true);
-    const optimisticTask = createLocalTask(cleanTitle, category);
+    const optimisticTask = createLocalTask(cleanTitle, category, priority);
     commit((current) => [optimisticTask, ...current]);
 
     try {
       if (userId) {
-        const savedTask = await insertRemoteTask(userId, cleanTitle, category);
+        const savedTask = await insertRemoteTask(
+          userId,
+          cleanTitle,
+          category,
+          priority,
+        );
         commit((current) =>
           current.map((task) =>
             task.id === optimisticTask.id ? savedTask : task,

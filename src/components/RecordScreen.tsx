@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useFocusSessions } from '../hooks/useFocusSessions';
 import { colors, radii, shadows } from '../theme';
@@ -18,7 +21,7 @@ import type { FocusSession, TimerMode } from '../types';
 
 type TimerStatus = 'idle' | 'running' | 'paused';
 
-const DURATION_PRESETS = [15, 25, 45, 60];
+const DURATION_PRESETS = [5, 15, 25, 45, 60];
 
 function formatTimer(totalSeconds: number) {
   const seconds = Math.max(0, Math.floor(totalSeconds));
@@ -103,6 +106,7 @@ function SessionRow({ session }: { session: FocusSession }) {
 }
 
 export function RecordScreen({ userId }: { userId?: string }) {
+  const insets = useSafeAreaInsets();
   const focusState = useFocusSessions(userId);
   const [mode, setMode] = useState<TimerMode>('countdown');
   const [durationMinutes, setDurationMinutes] = useState('25');
@@ -113,6 +117,9 @@ export function RecordScreen({ userId }: { userId?: string }) {
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const [isSaving, setIsSaving] = useState(false);
+  const [durationModalVisible, setDurationModalVisible] = useState(false);
+  const [draftMinutes, setDraftMinutes] = useState('25');
+  const [immersiveVisible, setImmersiveVisible] = useState(false);
   const completionHandled = useRef(false);
 
   const durationSeconds = Math.max(
@@ -169,6 +176,7 @@ export function RecordScreen({ userId }: { userId?: string }) {
     setSessionStartedAt(null);
     setNowMs(Date.now());
     completionHandled.current = false;
+    setImmersiveVisible(false);
   }
 
   function switchMode(nextMode: TimerMode) {
@@ -193,6 +201,7 @@ export function RecordScreen({ userId }: { userId?: string }) {
     setRunStartedAt(nextNow);
     setStatus('running');
     completionHandled.current = false;
+    setImmersiveVisible(true);
   }
 
   function pauseTimer() {
@@ -239,6 +248,7 @@ export function RecordScreen({ userId }: { userId?: string }) {
       setSessionStartedAt(null);
       setNowMs(Date.now());
       completionHandled.current = false;
+      setImmersiveVisible(false);
       Alert.alert(
         mode === 'countdown' && finishedNaturally
           ? '倒计时完成'
@@ -248,11 +258,34 @@ export function RecordScreen({ userId }: { userId?: string }) {
     }
   }
 
+  function openDurationPicker() {
+    if (status !== 'idle') {
+      Alert.alert('计时正在进行', '请先完成或重置计时，再调整倒计时长度。');
+      return;
+    }
+
+    setDraftMinutes(durationMinutes);
+    setDurationModalVisible(true);
+  }
+
+  function applyDuration() {
+    const nextMinutes = Math.max(
+      1,
+      Math.min(600, Number(draftMinutes || 0)),
+    );
+    setDurationMinutes(String(nextMinutes));
+    setBaseElapsedMs(0);
+    setSessionStartedAt(null);
+    setNowMs(Date.now());
+    setDurationModalVisible(false);
+  }
+
   return (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.intro}>
         <Text style={styles.eyebrow}>FOCUS LOG</Text>
         <Text style={styles.title}>把专注留成记录。</Text>
@@ -316,7 +349,12 @@ export function RecordScreen({ userId }: { userId?: string }) {
           </Pressable>
         </View>
 
-        <View style={styles.timerFace}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="调整倒计时长度"
+          onPress={openDurationPicker}
+          style={styles.timerFace}
+        >
           <View style={styles.timerRing}>
             <Text style={styles.timerDisplay}>{formatTimer(displaySeconds)}</Text>
             <Text style={styles.timerState}>
@@ -325,12 +363,12 @@ export function RecordScreen({ userId }: { userId?: string }) {
                 : status === 'paused'
                   ? '已暂停'
                   : mode === 'countdown'
-                    ? `计划 ${durationMinutes || 0} 分钟`
+                    ? `计划 ${durationMinutes || 0} 分钟 · 点击调整`
                     : '准备好时开始'}
             </Text>
           </View>
           <View style={styles.timerAccent} />
-        </View>
+        </Pressable>
 
         <View style={styles.timerActions}>
           {status === 'running' ? (
@@ -415,52 +453,21 @@ export function RecordScreen({ userId }: { userId?: string }) {
         />
 
         {mode === 'countdown' ? (
-          <>
-            <Text style={styles.durationLabel}>倒计时长度</Text>
-            <View style={styles.presetRow}>
-              {DURATION_PRESETS.map((minutes) => {
-                const selected = Number(durationMinutes) === minutes;
-
-                return (
-                  <Pressable
-                    key={minutes}
-                    accessibilityRole="button"
-                    disabled={status !== 'idle'}
-                    onPress={() => setDurationMinutes(String(minutes))}
-                    style={[
-                      styles.presetButton,
-                      selected && styles.presetButtonActive,
-                      status !== 'idle' && styles.presetButtonDisabled,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.presetText,
-                        selected && styles.presetTextActive,
-                      ]}
-                    >
-                      {minutes} 分钟
-                    </Text>
-                  </Pressable>
-                );
-              })}
+          <Pressable
+            accessibilityRole="button"
+            onPress={openDurationPicker}
+            style={styles.durationShortcut}
+          >
+            <View>
+              <Text style={styles.durationShortcutTitle}>
+                {durationMinutes || 0} 分钟倒计时
+              </Text>
+              <Text style={styles.durationShortcutHint}>
+                点击修改时长或使用自定义时间
+              </Text>
             </View>
-            <View style={styles.customDuration}>
-              <Text style={styles.customLabel}>自定义</Text>
-              <TextInput
-                value={durationMinutes}
-                onChangeText={(value) =>
-                  setDurationMinutes(value.replace(/[^\d]/g, ''))
-                }
-                editable={status === 'idle'}
-                keyboardType="number-pad"
-                maxLength={3}
-                selectTextOnFocus
-                style={styles.durationInput}
-              />
-              <Text style={styles.customLabel}>分钟</Text>
-            </View>
-          </>
+            <Ionicons name="options-outline" size={20} color={colors.inkSoft} />
+          </Pressable>
         ) : null}
       </View>
 
@@ -520,11 +527,194 @@ export function RecordScreen({ userId }: { userId?: string }) {
           ))}
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+
+      <Modal
+        visible={durationModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDurationModalVisible(false)}
+      >
+        <View style={styles.durationModalRoot}>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setDurationModalVisible(false)}
+          />
+          <View
+            style={[
+              styles.durationSheet,
+              { paddingBottom: Math.max(insets.bottom, 20) + 8 },
+            ]}
+          >
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetEyebrow}>COUNTDOWN</Text>
+            <Text style={styles.sheetTitle}>设置专注时长</Text>
+            <Text style={styles.sheetHint}>
+              选择常用长度，或者在下方输入自己的分钟数。
+            </Text>
+
+            <View style={styles.durationOptions}>
+              {DURATION_PRESETS.map((minutes) => {
+                const selected = Number(draftMinutes) === minutes;
+
+                return (
+                  <Pressable
+                    key={minutes}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    onPress={() => setDraftMinutes(String(minutes))}
+                    style={[
+                      styles.durationOption,
+                      selected && styles.durationOptionSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.durationOptionNumber,
+                        selected && styles.durationOptionNumberSelected,
+                      ]}
+                    >
+                      {minutes}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.durationOptionUnit,
+                        selected && styles.durationOptionUnitSelected,
+                      ]}
+                    >
+                      分钟
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.customDuration}>
+              <Text style={styles.customLabel}>自定义时长</Text>
+              <TextInput
+                value={draftMinutes}
+                onChangeText={(value) =>
+                  setDraftMinutes(value.replace(/[^\d]/g, ''))
+                }
+                keyboardType="number-pad"
+                maxLength={3}
+                selectTextOnFocus
+                style={styles.durationInput}
+              />
+              <Text style={styles.customLabel}>分钟</Text>
+            </View>
+
+            <View style={styles.durationActions}>
+              <Pressable
+                onPress={() => setDurationModalVisible(false)}
+                style={styles.cancelDurationButton}
+              >
+                <Text style={styles.cancelDurationText}>取消</Text>
+              </Pressable>
+              <Pressable
+                onPress={applyDuration}
+                style={styles.applyDurationButton}
+              >
+                <Text style={styles.applyDurationText}>应用时长</Text>
+                <Ionicons name="arrow-forward" size={18} color={colors.white} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={immersiveVisible}
+        animationType="fade"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setImmersiveVisible(false)}
+      >
+        <StatusBar style="light" />
+        <View
+          style={[
+            styles.immersiveScreen,
+            {
+              paddingTop: Math.max(insets.top, 18) + 8,
+              paddingBottom: Math.max(insets.bottom, 18) + 12,
+            },
+          ]}
+        >
+          <View style={styles.immersiveTopBar}>
+            <VisionMark />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="退出沉浸模式"
+              onPress={() => setImmersiveVisible(false)}
+              style={styles.immersiveExit}
+            >
+              <Ionicons name="chevron-down" size={21} color="#DCE8E2" />
+            </Pressable>
+          </View>
+
+          <View style={styles.immersiveCenter}>
+            <Text style={styles.immersiveEyebrow}>STAY WITH THE MOMENT</Text>
+            <Text style={styles.immersiveNote}>
+              {note.trim() || '专注学习'}
+            </Text>
+            <View style={styles.immersiveRing}>
+              <Text style={styles.immersiveTimer}>
+                {formatTimer(displaySeconds)}
+              </Text>
+              <Text style={styles.immersiveState}>
+                {status === 'paused' ? '暂停中' : '正在专注'}
+              </Text>
+            </View>
+            <Text style={styles.immersiveHint}>
+              放下切换，只完成眼前这一段。
+            </Text>
+          </View>
+
+          <View style={styles.immersiveActions}>
+            <Pressable
+              onPress={status === 'running' ? pauseTimer : startOrResume}
+              style={styles.immersivePauseButton}
+            >
+              <Ionicons
+                name={status === 'running' ? 'pause' : 'play'}
+                size={20}
+                color={colors.white}
+              />
+              <Text style={styles.immersivePauseText}>
+                {status === 'running' ? '暂停' : '继续'}
+              </Text>
+            </Pressable>
+            <Pressable
+              disabled={isSaving}
+              onPress={() => void finishSession(false)}
+              style={styles.immersiveFinishButton}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color={colors.ink} />
+              ) : (
+                <Ionicons name="checkmark" size={19} color={colors.ink} />
+              )}
+              <Text style={styles.immersiveFinishText}>完成并记录</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+function VisionMark() {
+  return (
+    <View style={styles.visionMark}>
+      <Text style={styles.visionMarkText}>三</Text>
+      <Text style={styles.visionLabel}>沉浸专注</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 18,
@@ -701,6 +891,26 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 14,
     fontWeight: '600',
+  },
+  durationShortcut: {
+    minHeight: 52,
+    marginTop: 12,
+    paddingHorizontal: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 13,
+    backgroundColor: colors.surfaceMuted,
+  },
+  durationShortcutTitle: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  durationShortcutHint: {
+    marginTop: 3,
+    color: colors.inkFaint,
+    fontSize: 9,
   },
   durationLabel: {
     marginTop: 16,
@@ -896,5 +1106,238 @@ const styles = StyleSheet.create({
     color: colors.inkSoft,
     fontSize: 11,
     fontWeight: '700',
+  },
+  durationModalRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(12, 20, 16, 0.48)',
+  },
+  durationSheet: {
+    paddingTop: 10,
+    paddingHorizontal: 20,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    backgroundColor: colors.canvas,
+    ...shadows.card,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 42,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.line,
+  },
+  sheetEyebrow: {
+    marginTop: 18,
+    color: colors.accent,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.8,
+  },
+  sheetTitle: {
+    marginTop: 5,
+    color: colors.ink,
+    fontSize: 25,
+    fontWeight: '800',
+  },
+  sheetHint: {
+    marginTop: 6,
+    color: colors.inkSoft,
+    fontSize: 11,
+    lineHeight: 17,
+  },
+  durationOptions: {
+    marginTop: 18,
+    flexDirection: 'row',
+    gap: 7,
+  },
+  durationOption: {
+    flex: 1,
+    minHeight: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 15,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  durationOptionSelected: {
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accent,
+  },
+  durationOptionNumber: {
+    color: colors.ink,
+    fontSize: 19,
+    fontWeight: '800',
+  },
+  durationOptionNumberSelected: {
+    color: colors.accent,
+  },
+  durationOptionUnit: {
+    marginTop: 3,
+    color: colors.inkFaint,
+    fontSize: 9,
+  },
+  durationOptionUnitSelected: {
+    color: colors.secondary,
+  },
+  durationActions: {
+    marginTop: 16,
+    flexDirection: 'row',
+    gap: 9,
+  },
+  cancelDurationButton: {
+    width: 92,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    backgroundColor: colors.surfaceMuted,
+  },
+  cancelDurationText: {
+    color: colors.inkSoft,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  applyDurationButton: {
+    flex: 1,
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 16,
+    backgroundColor: colors.ink,
+  },
+  applyDurationText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  immersiveScreen: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'space-between',
+    backgroundColor: '#14291F',
+  },
+  immersiveTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  visionMark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  visionMarkText: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    overflow: 'hidden',
+    color: '#15281F',
+    backgroundColor: '#E8E0C8',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+    lineHeight: 36,
+  },
+  visionLabel: {
+    color: '#A9BFB3',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+  },
+  immersiveExit: {
+    width: 43,
+    height: 43,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.13)',
+  },
+  immersiveCenter: {
+    alignItems: 'center',
+  },
+  immersiveEyebrow: {
+    color: '#9FB9AB',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 2.2,
+  },
+  immersiveNote: {
+    marginTop: 12,
+    color: '#E9EFEA',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  immersiveRing: {
+    width: 270,
+    height: 270,
+    marginTop: 28,
+    borderRadius: 135,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.025)',
+  },
+  immersiveTimer: {
+    color: '#F4F0E5',
+    fontSize: 66,
+    lineHeight: 74,
+    fontWeight: '200',
+    letterSpacing: -3,
+    fontVariant: ['tabular-nums'],
+  },
+  immersiveState: {
+    marginTop: 7,
+    color: '#AAC0B5',
+    fontSize: 11,
+  },
+  immersiveHint: {
+    marginTop: 20,
+    color: '#7F9A8C',
+    fontSize: 11,
+  },
+  immersiveActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  immersivePauseButton: {
+    width: 108,
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+  },
+  immersivePauseText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  immersiveFinishButton: {
+    flex: 1,
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 18,
+    backgroundColor: '#EEE8D9',
+  },
+  immersiveFinishText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

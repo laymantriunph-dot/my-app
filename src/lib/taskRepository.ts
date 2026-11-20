@@ -1,8 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { getSupabase } from './supabase';
-import { taskFromRow } from '../taskUtils';
-import type { Task, TaskCategory, TaskRow } from '../types';
+import { normalizeTask, taskFromRow } from '../taskUtils';
+import type {
+  Task,
+  TaskCategory,
+  TaskPriority,
+  TaskRow,
+} from '../types';
 
 const CACHE_PREFIX = '@sanfen/tasks';
 
@@ -21,7 +26,7 @@ export async function readTaskCache(scope: string): Promise<Task[]> {
 
   try {
     const parsed: unknown = JSON.parse(raw);
-    return isTaskArray(parsed) ? parsed : [];
+    return isTaskArray(parsed) ? parsed.map(normalizeTask) : [];
   } catch {
     return [];
   }
@@ -36,7 +41,7 @@ export async function fetchRemoteTasks(userId: string): Promise<Task[]> {
   const { data, error } = await client
     .from('tasks')
     .select(
-      'id,user_id,title,category,is_completed,created_at,completed_at,updated_at',
+      'id,user_id,title,category,priority,is_completed,created_at,completed_at,updated_at',
     )
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
@@ -58,6 +63,7 @@ export async function migrateGuestTasks(userId: string): Promise<Task[]> {
     user_id: userId,
     title: task.title,
     category: task.category,
+    priority: task.priority,
     is_completed: task.isCompleted,
     created_at: task.createdAt,
     completed_at: task.completedAt,
@@ -76,6 +82,7 @@ export async function insertRemoteTask(
   userId: string,
   title: string,
   category: TaskCategory,
+  priority: TaskPriority,
 ): Promise<Task> {
   const client = getSupabase();
   const { data, error } = await client
@@ -84,9 +91,10 @@ export async function insertRemoteTask(
       user_id: userId,
       title,
       category,
+      priority,
     })
     .select(
-      'id,user_id,title,category,is_completed,created_at,completed_at,updated_at',
+      'id,user_id,title,category,priority,is_completed,created_at,completed_at,updated_at',
     )
     .single();
 
@@ -104,6 +112,7 @@ export async function updateRemoteTask(
     .update({
       title: task.title,
       category: task.category,
+      priority: task.priority,
       is_completed: task.isCompleted,
       completed_at: task.completedAt,
       updated_at: new Date().toISOString(),
@@ -111,7 +120,7 @@ export async function updateRemoteTask(
     .eq('id', task.id)
     .eq('user_id', userId)
     .select(
-      'id,user_id,title,category,is_completed,created_at,completed_at,updated_at',
+      'id,user_id,title,category,priority,is_completed,created_at,completed_at,updated_at',
     )
     .single();
 

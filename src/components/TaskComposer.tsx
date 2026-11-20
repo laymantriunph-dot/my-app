@@ -13,16 +13,24 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CATEGORY_META } from '../taskUtils';
+import { CATEGORY_META, PRIORITY_META } from '../taskUtils';
 import { colors, radii, shadows } from '../theme';
-import { TASK_CATEGORIES, type TaskCategory } from '../types';
+import {
+  ACTIVE_TASK_CATEGORIES,
+  type TaskCategory,
+  type TaskPriority,
+} from '../types';
 
 type TaskComposerProps = {
   visible: boolean;
   initialCategory: TaskCategory;
   isSubmitting: boolean;
   onClose: () => void;
-  onSubmit: (title: string, category: TaskCategory) => Promise<boolean>;
+  onSubmit: (
+    title: string,
+    category: TaskCategory,
+    priority: TaskPriority,
+  ) => Promise<boolean>;
 };
 
 export function TaskComposer({
@@ -35,16 +43,18 @@ export function TaskComposer({
   const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<TaskCategory>(initialCategory);
+  const [priority, setPriority] = useState<TaskPriority>('primary');
 
   useEffect(() => {
     if (visible) {
       setTitle('');
       setCategory(initialCategory);
+      setPriority('primary');
     }
   }, [initialCategory, visible]);
 
   async function submit() {
-    const didSave = await onSubmit(title, category);
+    const didSave = await onSubmit(title, category, priority);
 
     if (didSave) {
       onClose();
@@ -100,7 +110,7 @@ export function TaskComposer({
           />
 
           <View style={styles.categories}>
-            {TASK_CATEGORIES.map((key) => {
+            {ACTIVE_TASK_CATEGORIES.map((key) => {
               const meta = CATEGORY_META[key];
               const isSelected = key === category;
 
@@ -137,6 +147,48 @@ export function TaskComposer({
               );
             })}
           </View>
+
+          {category === 'today' ? (
+            <View style={styles.prioritySection}>
+              <Text style={styles.priorityLabel}>重要程度</Text>
+              <View style={styles.priorityRow}>
+                {(['primary', 'secondary'] as const).map((key) => {
+                  const meta = PRIORITY_META[key];
+                  const isSelected = priority === key;
+
+                  return (
+                    <Pressable
+                      key={key}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: isSelected }}
+                      onPress={() => setPriority(key)}
+                      style={[
+                        styles.priorityButton,
+                        {
+                          backgroundColor: isSelected
+                            ? meta.softColor
+                            : colors.surface,
+                          borderColor: isSelected
+                            ? meta.color
+                            : colors.line,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.priorityName,
+                          { color: isSelected ? meta.color : colors.inkSoft },
+                        ]}
+                      >
+                        {meta.label}
+                      </Text>
+                      <Text style={styles.priorityHint}>{meta.hint}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
 
           <Pressable
             accessibilityRole="button"
@@ -247,6 +299,36 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 12,
     fontWeight: '800',
+  },
+  prioritySection: {
+    marginTop: 14,
+  },
+  priorityLabel: {
+    marginBottom: 7,
+    color: colors.inkSoft,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  priorityRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  priorityButton: {
+    flex: 1,
+    minHeight: 56,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    borderRadius: radii.sm,
+    borderWidth: 1,
+  },
+  priorityName: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  priorityHint: {
+    marginTop: 3,
+    color: colors.inkFaint,
+    fontSize: 9,
   },
   submitButton: {
     height: 56,

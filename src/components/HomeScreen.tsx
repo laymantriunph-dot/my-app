@@ -3,9 +3,9 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
   RefreshControl,
+  SectionList,
   StyleSheet,
   Text,
   View,
@@ -25,11 +25,12 @@ import {
   getGreeting,
   getTaskStats,
   getTodayLabel,
+  PRIORITY_META,
   sortTasks,
 } from '../taskUtils';
 import { colors, radii, shadows } from '../theme';
 import {
-  TASK_CATEGORIES,
+  ACTIVE_TASK_CATEGORIES,
   type Task,
   type TaskCategory,
 } from '../types';
@@ -46,6 +47,14 @@ type HomeScreenProps = {
 };
 
 type MainSection = 'energy' | 'records';
+type TaskSection = {
+  key: string;
+  title: string;
+  hint: string;
+  color: string;
+  softColor: string;
+  data: Task[];
+};
 
 export function HomeScreen({
   user,
@@ -60,7 +69,10 @@ export function HomeScreen({
     useState<TaskCategory>('today');
   const [composerVisible, setComposerVisible] = useState(false);
   const [archiveVisible, setArchiveVisible] = useState(false);
-  const stats = getTaskStats(taskState.tasks);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const stats = getTaskStats(
+    taskState.tasks.filter((task) => task.category === 'today'),
+  );
   const visibleTasks = useMemo(
     () =>
       sortTasks(
@@ -70,6 +82,40 @@ export function HomeScreen({
   );
   const pendingTasks = visibleTasks.filter((task) => !task.isCompleted);
   const completedTasks = visibleTasks.filter((task) => task.isCompleted);
+  const taskSections: TaskSection[] =
+    activeCategory === 'today'
+      ? [
+          {
+            key: 'primary',
+            title: PRIORITY_META.primary.label,
+            hint: PRIORITY_META.primary.hint,
+            color: PRIORITY_META.primary.color,
+            softColor: PRIORITY_META.primary.softColor,
+            data: pendingTasks.filter(
+              (task) => task.priority === 'primary',
+            ),
+          },
+          {
+            key: 'secondary',
+            title: PRIORITY_META.secondary.label,
+            hint: PRIORITY_META.secondary.hint,
+            color: PRIORITY_META.secondary.color,
+            softColor: PRIORITY_META.secondary.softColor,
+            data: pendingTasks.filter(
+              (task) => task.priority === 'secondary',
+            ),
+          },
+        ]
+      : [
+          {
+            key: 'continue',
+            title: '继续清单',
+            hint: CATEGORY_META.longTerm.hint,
+            color: CATEGORY_META.longTerm.color,
+            softColor: CATEGORY_META.longTerm.softColor,
+            data: pendingTasks,
+          },
+        ];
   const activeMeta = CATEGORY_META[activeCategory];
   const displayName = getDisplayName(user?.email);
   const avatarLetter = (displayName[0] ?? '我').toUpperCase();
@@ -129,6 +175,31 @@ export function HomeScreen({
 
   const listHeader = (
     <View>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setArchiveVisible(true)}
+        style={({ pressed }) => [
+          styles.successButton,
+          pressed && styles.toolPressed,
+        ]}
+      >
+        <View style={styles.successIcon}>
+          <Ionicons name="trophy-outline" size={18} color="#F7E5BC" />
+        </View>
+        <View style={styles.successCopy}>
+          <Text style={styles.successTitle}>The Way Of Success</Text>
+          <Text style={styles.successHint}>
+            查看保存过的清单与当天分类记录
+          </Text>
+        </View>
+        <View style={styles.successCount}>
+          <Text style={styles.successCountText}>
+            {archiveState.archives.length}
+          </Text>
+          <Ionicons name="chevron-forward" size={15} color="#D9C590" />
+        </View>
+      </Pressable>
+
       <View style={styles.greetingBlock}>
         <Text style={styles.dateLabel}>{getTodayLabel()}</Text>
         <Text style={styles.greeting}>{getGreeting()}，{displayName}</Text>
@@ -180,7 +251,7 @@ export function HomeScreen({
       </LinearGradient>
 
       <View style={styles.categoryCards}>
-        {TASK_CATEGORIES.map((key) => {
+        {ACTIVE_TASK_CATEGORIES.map((key) => {
           const meta = CATEGORY_META[key];
           const categoryTasks = taskState.tasks.filter(
             (task) => task.category === key,
@@ -193,7 +264,10 @@ export function HomeScreen({
               key={key}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
-              onPress={() => setActiveCategory(key)}
+              onPress={() => {
+                setActiveCategory(key);
+                setShowCompleted(false);
+              }}
               style={({ pressed }) => [
                 styles.categoryCard,
                 {
@@ -203,20 +277,21 @@ export function HomeScreen({
                 pressed && styles.categoryCardPressed,
               ]}
             >
-              <View
-                style={[
-                  styles.categoryIcon,
-                  { backgroundColor: meta.softColor },
-                ]}
-              >
-                <Ionicons name={meta.icon} size={17} color={meta.color} />
+              <View style={styles.categoryTop}>
+                <View
+                  style={[
+                    styles.categoryIcon,
+                    { backgroundColor: meta.softColor },
+                  ]}
+                >
+                  <Ionicons name={meta.icon} size={17} color={meta.color} />
+                </View>
+                <Text style={[styles.categoryName, { color: meta.color }]}>
+                  {meta.label}
+                </Text>
               </View>
-              <Text style={[styles.categoryName, { color: meta.color }]}>
-                {meta.label}
-              </Text>
               <Text style={styles.categoryCount}>
-                {categoryStats.remaining}
-                <Text style={styles.categoryCountMuted}> 待办</Text>
+                {categoryStats.remaining} 项待办
               </Text>
             </Pressable>
           );
@@ -238,19 +313,11 @@ export function HomeScreen({
           <Text style={styles.saveListText}>保存当前清单</Text>
           <Text style={styles.saveListCount}>{visibleTasks.length} 项</Text>
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setArchiveVisible(true)}
-          style={({ pressed }) => [
-            styles.historyButton,
-            pressed && styles.toolPressed,
-          ]}
-        >
-          <Ionicons name="albums-outline" size={17} color={colors.inkSoft} />
-          <Text style={styles.historyButtonText}>
-            历史 {archiveState.archives.length}
+        <View style={styles.activeCategoryPill}>
+          <Text style={styles.activeCategoryPillText}>
+            {activeMeta.label}
           </Text>
-        </Pressable>
+        </View>
       </View>
 
       {taskState.error || archiveState.error ? (
@@ -277,7 +344,9 @@ export function HomeScreen({
 
       <View style={styles.listHeading}>
         <View>
-          <Text style={styles.listTitle}>{activeMeta.label}清单</Text>
+          <Text style={styles.listTitle}>
+            {activeCategory === 'today' ? '今天，先做主要的' : '继续积累'}
+          </Text>
           <Text style={styles.listDescription}>{activeMeta.hint}</Text>
         </View>
         <Text style={styles.listCount}>
@@ -340,8 +409,8 @@ export function HomeScreen({
             ]}
           >
             <View style={styles.listFrame}>
-              <FlatList
-                data={taskState.isLoading ? [] : pendingTasks}
+              <SectionList
+                sections={taskState.isLoading ? [] : taskSections}
                 keyExtractor={(task) => task.id}
                 renderItem={({ item }) => (
                   <TaskItem
@@ -354,6 +423,50 @@ export function HomeScreen({
                 ItemSeparatorComponent={() => (
                   <View style={styles.separator} />
                 )}
+                renderSectionHeader={({ section }) => (
+                  <View style={styles.taskSectionHeader}>
+                    <View style={styles.taskSectionTitleRow}>
+                      <View
+                        style={[
+                          styles.taskSectionDot,
+                          { backgroundColor: section.color },
+                        ]}
+                      />
+                      <Text style={styles.taskSectionTitle}>
+                        {section.title}
+                      </Text>
+                      <View
+                        style={[
+                          styles.taskSectionCount,
+                          { backgroundColor: section.softColor },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.taskSectionCountText,
+                            { color: section.color },
+                          ]}
+                        >
+                          {section.data.length}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.taskSectionHint}>{section.hint}</Text>
+                  </View>
+                )}
+                renderSectionFooter={({ section }) =>
+                  section.data.length === 0 ? (
+                    <View style={styles.sectionEmpty}>
+                      <Text style={styles.sectionEmptyText}>
+                        {activeCategory === 'today'
+                          ? `暂时没有${section.title}待办`
+                          : '暂时没有继续事项'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.sectionGap} />
+                  )
+                }
                 ListHeaderComponent={listHeader}
                 ListEmptyComponent={
                   taskState.isLoading ? undefined : (
@@ -375,46 +488,58 @@ export function HomeScreen({
                         />
                       </View>
                       <Text style={styles.emptyTitle}>
-                        {completedTasks.length > 0
-                          ? '这一栏已经清空'
-                          : '这一栏还是空的'}
-                      </Text>
-                      <Text style={styles.emptyDescription}>
-                        {completedTasks.length > 0
-                          ? '完成的任务保存在下方，随时可以回看。'
-                          : '写下一件具体、能开始行动的事。'}
+                        正在整理今天的蓄能清单…
                       </Text>
                     </View>
                   )
                 }
                 ListFooterComponent={
                   <View>
-                    {completedTasks.length > 0 ? (
+                    {activeCategory === 'today' ? (
                       <View style={styles.completedSection}>
-                        <View style={styles.completedHeader}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityState={{ expanded: showCompleted }}
+                          onPress={() => setShowCompleted((current) => !current)}
+                          style={({ pressed }) => [
+                            styles.completedHeader,
+                            pressed && styles.toolPressed,
+                          ]}
+                        >
                           <View style={styles.completedTitleRow}>
                             <Ionicons
-                              name="checkmark-circle"
+                              name="checkmark-circle-outline"
                               size={18}
                               color={colors.success}
                             />
                             <Text style={styles.completedTitle}>已完成</Text>
                           </View>
-                          <Text style={styles.completedCount}>
-                            {completedTasks.length} 项
-                          </Text>
-                        </View>
-                        <View style={styles.completedList}>
-                          {completedTasks.map((task) => (
-                            <TaskItem
-                              key={task.id}
-                              task={task}
-                              disabled={taskState.isMutating}
-                              onToggle={() => void taskState.toggleTask(task)}
-                              onDelete={() => confirmDelete(task)}
+                          <View style={styles.completedAction}>
+                            <Text style={styles.completedCount}>
+                              {completedTasks.length} 项
+                            </Text>
+                            <Ionicons
+                              name={
+                                showCompleted ? 'chevron-up' : 'chevron-down'
+                              }
+                              size={16}
+                              color={colors.inkFaint}
                             />
-                          ))}
-                        </View>
+                          </View>
+                        </Pressable>
+                        {showCompleted && completedTasks.length > 0 ? (
+                          <View style={styles.completedList}>
+                            {completedTasks.map((task) => (
+                              <TaskItem
+                                key={task.id}
+                                task={task}
+                                disabled={taskState.isMutating}
+                                onToggle={() => void taskState.toggleTask(task)}
+                                onDelete={() => confirmDelete(task)}
+                              />
+                            ))}
+                          </View>
+                        ) : null}
                       </View>
                     ) : null}
                     <Text style={styles.footerText}>
@@ -775,8 +900,8 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     flex: 1,
-    minHeight: 108,
-    padding: 11,
+    minHeight: 78,
+    padding: 12,
     justifyContent: 'space-between',
     borderRadius: radii.md,
     borderWidth: 1,
@@ -791,8 +916,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  categoryTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   categoryName: {
-    marginTop: 10,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -854,6 +983,62 @@ const styles = StyleSheet.create({
   toolPressed: {
     opacity: 0.68,
   },
+  successButton: {
+    minHeight: 65,
+    marginTop: 15,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    borderRadius: radii.md,
+    backgroundColor: '#4B4938',
+    overflow: 'hidden',
+  },
+  successIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.09)',
+  },
+  successCopy: {
+    flex: 1,
+  },
+  successTitle: {
+    color: '#FFF7E8',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  successHint: {
+    marginTop: 3,
+    color: '#C8C1AB',
+    fontSize: 9,
+  },
+  successCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  successCountText: {
+    color: '#F7E5BC',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  activeCategoryPill: {
+    minHeight: 48,
+    paddingHorizontal: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 15,
+    backgroundColor: colors.surfaceMuted,
+  },
+  activeCategoryPillText: {
+    color: colors.inkSoft,
+    fontSize: 11,
+    fontWeight: '700',
+  },
   errorBanner: {
     marginTop: 14,
     padding: 12,
@@ -891,6 +1076,63 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  taskSectionHeader: {
+    marginTop: 13,
+    marginBottom: 9,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  taskSectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  taskSectionDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  taskSectionTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  taskSectionCount: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  taskSectionCountText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  taskSectionHint: {
+    maxWidth: 190,
+    color: colors.inkFaint,
+    fontSize: 9,
+    textAlign: 'right',
+  },
+  sectionEmpty: {
+    minHeight: 45,
+    marginBottom: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.line,
+  },
+  sectionEmptyText: {
+    color: colors.inkFaint,
+    fontSize: 10,
+  },
+  sectionGap: {
+    height: 9,
+  },
   separator: {
     height: 9,
   },
@@ -898,10 +1140,12 @@ const styles = StyleSheet.create({
     marginTop: 26,
   },
   completedHeader: {
+    minHeight: 42,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 2,
   },
   completedTitleRow: {
     flexDirection: 'row',
@@ -916,6 +1160,11 @@ const styles = StyleSheet.create({
   completedCount: {
     color: colors.inkFaint,
     fontSize: 10,
+  },
+  completedAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   completedList: {
     gap: 9,

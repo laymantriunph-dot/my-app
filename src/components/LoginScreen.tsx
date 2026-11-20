@@ -67,10 +67,10 @@ export function LoginScreen({ auth, onStartLocal }: LoginScreenProps) {
           </View>
 
           <View style={styles.hero}>
-            <Text style={styles.eyebrow}>A SMALLER, CLEARER LIST</Text>
-            <Text style={styles.title}>把事情放回{'\n'}合适的顺序。</Text>
+            <Text style={styles.eyebrow}>A QUIET PLACE TO FOCUS</Text>
+            <Text style={styles.title}>安静下来，{'\n'}把今天做好。</Text>
             <Text style={styles.subtitle}>
-              今天专注、长期积累、次要事项留到有余力时。每天只看真正重要的三件事。
+              用蓄能安排任务，用记录沉淀专注。少一点切换，多一点真正完成。
             </Text>
           </View>
 
@@ -81,38 +81,30 @@ export function LoginScreen({ auth, onStartLocal }: LoginScreenProps) {
             style={styles.previewCard}
           >
             <View style={styles.previewHeader}>
-              <Text style={styles.previewDate}>今日 · 三分法</Text>
+              <Text style={styles.previewDate}>TODAY · 保持清醒</Text>
               <View style={styles.previewDot} />
             </View>
-            <View style={styles.previewRows}>
+            <Text style={styles.previewQuote}>
+              把注意力留给真正重要的事。
+            </Text>
+            <View style={styles.previewDivider} />
+            <View style={styles.previewPrinciples}>
               {[
-                ['01', '当天', colors.today],
-                ['02', '长期', colors.longTerm],
-                ['03', '次重要', colors.secondary],
-              ].map(([number, label, color]) => (
-                <View key={number} style={styles.previewRow}>
+                ['sunny-outline', '蓄能', '主要优先'],
+                ['timer-outline', '记录', '专注当下'],
+              ].map(([icon, label, hint]) => (
+                <View key={label} style={styles.previewPrinciple}>
                   <View
-                    style={[styles.previewNumber, { backgroundColor: color }]}
+                    style={styles.previewPrincipleIcon}
                   >
-                    <Text style={styles.previewNumberText}>{number}</Text>
-                  </View>
-                  <Text style={styles.previewLabel}>{label}</Text>
-                  <View style={styles.previewLine}>
-                    <View
-                      style={[
-                        styles.previewLineFill,
-                        {
-                          backgroundColor: color,
-                          width:
-                            number === '01'
-                              ? '72%'
-                              : number === '02'
-                                ? '52%'
-                                : '32%',
-                        },
-                      ]}
+                    <Ionicons
+                      name={icon as 'sunny-outline' | 'timer-outline'}
+                      size={17}
+                      color="#E6DDBF"
                     />
                   </View>
+                  <Text style={styles.previewPrincipleLabel}>{label}</Text>
+                  <Text style={styles.previewPrincipleHint}>{hint}</Text>
                 </View>
               ))}
             </View>
@@ -309,7 +301,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 17,
+    marginBottom: 22,
   },
   previewDate: {
     color: '#E3EEE8',
@@ -322,6 +314,46 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#A8D8C3',
+  },
+  previewQuote: {
+    maxWidth: 270,
+    color: '#FFF8EB',
+    fontSize: 22,
+    lineHeight: 32,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+  },
+  previewDivider: {
+    height: 1,
+    marginTop: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  previewPrinciples: {
+    marginTop: 15,
+    flexDirection: 'row',
+    gap: 24,
+  },
+  previewPrinciple: {
+    flex: 1,
+  },
+  previewPrincipleIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  previewPrincipleLabel: {
+    marginTop: 9,
+    color: '#F1E9D7',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  previewPrincipleHint: {
+    marginTop: 3,
+    color: '#AFC4B9',
+    fontSize: 9,
   },
   previewRows: {
     gap: 11,

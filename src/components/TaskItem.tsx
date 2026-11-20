@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { CATEGORY_META } from '../taskUtils';
+import { CATEGORY_META, PRIORITY_META } from '../taskUtils';
 import { colors, radii } from '../theme';
 import type { Task } from '../types';
 
@@ -19,6 +19,13 @@ export function TaskItem({
   onDelete,
 }: TaskItemProps) {
   const meta = CATEGORY_META[task.category];
+  const priorityMeta = PRIORITY_META[task.priority];
+  const markerColor =
+    task.category === 'today' ? priorityMeta.color : meta.color;
+  const categoryLabel =
+    task.category === 'today'
+      ? `当天 · ${priorityMeta.label}`
+      : meta.label;
 
   return (
     <View style={[styles.container, task.isCompleted && styles.completedContainer]}>
@@ -32,8 +39,8 @@ export function TaskItem({
         style={[
           styles.checkButton,
           {
-            borderColor: task.isCompleted ? meta.color : colors.line,
-            backgroundColor: task.isCompleted ? meta.color : 'transparent',
+            borderColor: task.isCompleted ? markerColor : colors.line,
+            backgroundColor: task.isCompleted ? markerColor : 'transparent',
           },
         ]}
       >
@@ -50,11 +57,15 @@ export function TaskItem({
           {task.title}
         </Text>
         <View style={styles.metaRow}>
-          <View style={[styles.categoryDot, { backgroundColor: meta.color }]} />
-          <Text style={styles.categoryLabel}>{meta.label}</Text>
+          <View style={[styles.categoryDot, { backgroundColor: markerColor }]} />
+          <Text style={styles.categoryLabel}>{categoryLabel}</Text>
           <Text style={styles.metaDivider}>·</Text>
           <Text style={styles.categoryHint}>
-            {task.isCompleted ? '已完成' : meta.hint}
+            {task.isCompleted
+              ? '已完成'
+              : task.category === 'today'
+                ? priorityMeta.hint
+                : meta.hint}
           </Text>
         </View>
       </View>

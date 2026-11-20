@@ -1,13 +1,17 @@
 import type { AuthUser } from './lib/supabase';
 
 export const TASK_CATEGORIES = ['today', 'longTerm', 'secondary'] as const;
+export const ACTIVE_TASK_CATEGORIES = ['today', 'longTerm'] as const;
 
 export type TaskCategory = (typeof TASK_CATEGORIES)[number];
+export type ActiveTaskCategory = (typeof ACTIVE_TASK_CATEGORIES)[number];
+export type TaskPriority = 'primary' | 'secondary';
 
 export type Task = {
   id: string;
   title: string;
   category: TaskCategory;
+  priority: TaskPriority;
   isCompleted: boolean;
   createdAt: string;
   completedAt: string | null;
@@ -19,6 +23,7 @@ export type TaskRow = {
   user_id: string;
   title: string;
   category: TaskCategory;
+  priority: TaskPriority;
   is_completed: boolean;
   created_at: string;
   completed_at: string | null;

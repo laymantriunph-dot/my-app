@@ -3,6 +3,7 @@ import {
   TASK_CATEGORIES,
   type Task,
   type TaskCategory,
+  type TaskPriority,
   type TaskRow,
 } from './types';
 
@@ -15,8 +16,8 @@ export const CATEGORY_META = {
     icon: 'sunny-outline' as const,
   },
   longTerm: {
-    label: '长期',
-    hint: '持续推进',
+    label: '继续',
+    hint: '持续推进，不急着今天完成',
     color: colors.longTerm,
     softColor: colors.longTermSoft,
     icon: 'leaf-outline' as const,
@@ -39,6 +40,29 @@ export const CATEGORY_META = {
   }
 >;
 
+export const PRIORITY_META = {
+  primary: {
+    label: '主要',
+    hint: '今天最重要的推进',
+    color: colors.today,
+    softColor: colors.todaySoft,
+  },
+  secondary: {
+    label: '次要',
+    hint: '完成主要事项后再处理',
+    color: colors.secondary,
+    softColor: colors.secondarySoft,
+  },
+} satisfies Record<
+  TaskPriority,
+  {
+    label: string;
+    hint: string;
+    color: string;
+    softColor: string;
+  }
+>;
+
 export function isTaskCategory(value: unknown): value is TaskCategory {
   return (
     typeof value === 'string' &&
@@ -51,6 +75,7 @@ export function taskFromRow(row: TaskRow): Task {
     id: row.id,
     title: row.title,
     category: row.category,
+    priority: row.priority,
     isCompleted: row.is_completed,
     createdAt: row.created_at,
     completedAt: row.completed_at,
@@ -61,6 +86,7 @@ export function taskFromRow(row: TaskRow): Task {
 export function createLocalTask(
   title: string,
   category: TaskCategory,
+  priority: TaskPriority = 'primary',
 ): Task {
   const now = new Date().toISOString();
 
@@ -68,10 +94,21 @@ export function createLocalTask(
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
     title: title.trim(),
     category,
+    priority,
     isCompleted: false,
     createdAt: now,
     completedAt: null,
     updatedAt: now,
+  };
+}
+
+export function normalizeTask(task: Task): Task {
+  return {
+    ...task,
+    category: task.category === 'secondary' ? 'today' : task.category,
+    priority:
+      task.priority ??
+      (task.category === 'secondary' ? 'secondary' : 'primary'),
   };
 }
 

@@ -10,11 +10,13 @@ import Svg, {
 type ProgressDialProps = {
   percentage: number;
   size?: number;
+  compact?: boolean;
 };
 
 export function ProgressDial({
   percentage,
   size = 126,
+  compact = false,
 }: ProgressDialProps) {
   const safePercentage = Math.max(0, Math.min(100, percentage));
   const center = size / 2;
@@ -50,7 +52,7 @@ export function ProgressDial({
               x2={center + Math.cos(angle) * outer}
               y2={center + Math.sin(angle) * outer}
               stroke={active ? '#EDE3D0' : '#FFFFFF'}
-              strokeWidth={1.4}
+              strokeWidth={compact ? 1 : 1.4}
               strokeLinecap="round"
               opacity={active ? 0.88 : 0.12}
             />
@@ -62,7 +64,7 @@ export function ProgressDial({
           cy={center}
           r={radius}
           stroke="#FFFFFF"
-          strokeWidth={7}
+          strokeWidth={compact ? 4 : 7}
           opacity={0.1}
           fill="none"
         />
@@ -71,7 +73,7 @@ export function ProgressDial({
           cy={center}
           r={radius}
           stroke="url(#progressStroke)"
-          strokeWidth={7}
+          strokeWidth={compact ? 4 : 7}
           fill="none"
           strokeLinecap="round"
           strokeDasharray={`${circumference} ${circumference}`}
@@ -82,13 +84,17 @@ export function ProgressDial({
         <Circle
           cx={endpointX}
           cy={endpointY}
-          r={4.5}
+          r={compact ? 3 : 4.5}
           fill="#F2E8D5"
         />
       </Svg>
       <View style={styles.center}>
-        <Text style={styles.percentage}>{safePercentage}</Text>
-        <Text style={styles.percentSign}>%</Text>
+        <Text style={[styles.percentage, compact && styles.percentageCompact]}>
+          {safePercentage}
+        </Text>
+        <Text style={[styles.percentSign, compact && styles.percentCompact]}>
+          %
+        </Text>
       </View>
     </View>
   );
@@ -115,5 +121,15 @@ const styles = StyleSheet.create({
     color: '#DDE7E1',
     fontSize: 12,
     fontWeight: '700',
+  },
+  percentageCompact: {
+    fontSize: 15,
+    lineHeight: 17,
+    letterSpacing: -0.7,
+  },
+  percentCompact: {
+    marginTop: -3,
+    marginLeft: 1,
+    fontSize: 7,
   },
 });

@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -48,6 +49,7 @@ import { DayPreviewModal } from './DayPreviewModal';
 import { FocusHistoryModal } from './FocusHistoryModal';
 import { MotivationModal } from './MotivationModal';
 import { PlannerModal } from './PlannerModal';
+import { ProgressDial } from './ProgressDial';
 import { RecordScreen } from './RecordScreen';
 import { TaskComposer } from './TaskComposer';
 import { TaskItem } from './TaskItem';
@@ -342,6 +344,48 @@ export function HomeScreen({
 
   const listHeader = (
     <View>
+      <View style={styles.headerActions}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Accomplished 已完成记录"
+          onPress={() => setArchiveVisible(true)}
+          style={({ pressed }) => [
+            styles.headerActionPrimary,
+            pressed && styles.toolPressed,
+          ]}
+        >
+          <View style={styles.headerActionIcon}>
+            <Ionicons
+              name="trophy-outline"
+              size={15}
+              color={colors.secondary}
+            />
+          </View>
+          <Text style={styles.headerActionTitle}>Accomplished</Text>
+          <Text style={styles.headerActionCount}>
+            {archiveState.archives.length}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Focus 计时记录"
+          onPress={() => setFocusHistoryVisible(true)}
+          style={({ pressed }) => [
+            styles.headerActionSecondary,
+            pressed && styles.toolPressed,
+          ]}
+        >
+          <View style={styles.headerActionIconFocus}>
+            <Ionicons
+              name="timer-outline"
+              size={15}
+              color={colors.longTerm}
+            />
+          </View>
+          <Text style={styles.headerActionTitleFocus}>Focus</Text>
+        </Pressable>
+      </View>
+
       <View style={styles.greetingBlock}>
         <Text style={styles.dateLabel}>{getTodayLabel()}</Text>
         <Pressable
@@ -436,25 +480,25 @@ export function HomeScreen({
 
       {activeCategory === 'today' ? (
         <View style={styles.progressAndCalendarRow}>
-          <View style={styles.compactProgressCard}>
-            <View style={styles.compactProgressCopy}>
-              <Text style={styles.compactProgressLabel}>今日进度</Text>
-              <Text style={styles.compactProgressValue}>
-                {stats.completed} / {stats.total}
+          <LinearGradient
+            colors={['#405A4D', '#6A8376']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.circularProgressCard}
+          >
+            <View style={styles.circularProgressCopy}>
+              <Text style={styles.circularProgressEyebrow}>TODAY</Text>
+              <Text style={styles.circularProgressLabel}>今日进度</Text>
+              <Text style={styles.circularProgressValue}>
+                {stats.completed} / {stats.total} 完成
               </Text>
             </View>
-            <View style={styles.compactProgressTrack}>
-              <View
-                style={[
-                  styles.compactProgressFill,
-                  { width: `${stats.percentage}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.compactProgressPercent}>
-              {stats.percentage}%
-            </Text>
-          </View>
+            <ProgressDial
+              compact
+              percentage={stats.percentage}
+              size={62}
+            />
+          </LinearGradient>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="打开日历查看未来待办"
@@ -464,12 +508,14 @@ export function HomeScreen({
               pressed && styles.toolPressed,
             ]}
           >
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={colors.longTerm}
-            />
-            <Text style={styles.calendarCompanionText}>日历</Text>
+            <View style={styles.calendarCompanionIcon}>
+              <Ionicons
+                name="calendar-outline"
+                size={17}
+                color={colors.longTerm}
+              />
+            </View>
+            <Text style={styles.calendarCompanionText}>Calendar</Text>
             {futurePlannedCount > 0 ? (
               <View style={styles.calendarCompanionBadge}>
                 <Text style={styles.calendarCompanionBadgeText}>
@@ -598,45 +644,6 @@ export function HomeScreen({
             </View>
           </View>
           <View style={styles.topBarActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Accomplished 已完成记录"
-              onPress={() => setArchiveVisible(true)}
-              style={({ pressed }) => [
-                styles.compactTopButton,
-                pressed && styles.toolPressed,
-              ]}
-            >
-              <Ionicons
-                name="trophy-outline"
-                size={18}
-                color={colors.secondary}
-              />
-              {archiveState.archives.length > 0 ? (
-                <View style={styles.compactTopBadge}>
-                  <Text style={styles.compactTopBadgeText}>
-                    {archiveState.archives.length > 99
-                      ? '99+'
-                      : archiveState.archives.length}
-                  </Text>
-                </View>
-              ) : null}
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Focus 计时记录"
-              onPress={() => setFocusHistoryVisible(true)}
-              style={({ pressed }) => [
-                styles.compactTopButton,
-                pressed && styles.toolPressed,
-              ]}
-            >
-              <Ionicons
-                name="timer-outline"
-                size={18}
-                color={colors.longTerm}
-              />
-            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="账号信息"
@@ -1112,6 +1119,70 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  headerActions: {
+    marginTop: 7,
+    marginBottom: 2,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerActionPrimary: {
+    flex: 1,
+    minHeight: 43,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  headerActionSecondary: {
+    width: 103,
+    minHeight: 43,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  headerActionIcon: {
+    width: 27,
+    height: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9,
+    backgroundColor: colors.secondarySoft,
+  },
+  headerActionIconFocus: {
+    width: 27,
+    height: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9,
+    backgroundColor: colors.longTermSoft,
+  },
+  headerActionTitle: {
+    flex: 1,
+    color: colors.ink,
+    fontFamily: 'serif',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  headerActionTitleFocus: {
+    color: colors.ink,
+    fontFamily: 'serif',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  headerActionCount: {
+    color: colors.secondary,
+    fontSize: 11,
+    fontWeight: '800',
+  },
   compactTopButton: {
     width: 38,
     height: 38,
@@ -1252,6 +1323,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     gap: 9,
+  },
+  circularProgressCard: {
+    flex: 2,
+    minHeight: 82,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    borderRadius: 18,
+    overflow: 'hidden',
+    ...shadows.card,
+  },
+  circularProgressCopy: {
+    flex: 1,
+  },
+  circularProgressEyebrow: {
+    color: '#C9DBD1',
+    fontSize: 7,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  circularProgressLabel: {
+    marginTop: 4,
+    color: '#F7F4EC',
+    fontFamily: 'serif',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  circularProgressValue: {
+    marginTop: 3,
+    color: '#D5E2DB',
+    fontSize: 9,
+    fontWeight: '600',
   },
   compactProgressCard: {
     flex: 2,
@@ -1816,23 +1921,35 @@ const styles = StyleSheet.create({
   },
   calendarCompanion: {
     flex: 1,
-    minHeight: 52,
-    paddingHorizontal: 8,
-    flexDirection: 'row',
+    minHeight: 82,
+    paddingHorizontal: 6,
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    borderRadius: 14,
+    gap: 7,
+    borderRadius: 18,
     backgroundColor: colors.longTermSoft,
     borderWidth: 1,
     borderColor: '#D3E2DB',
   },
+  calendarCompanionIcon: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 11,
+    backgroundColor: colors.surface,
+  },
   calendarCompanionText: {
     color: colors.longTerm,
+    fontFamily: 'serif',
     fontSize: 10,
     fontWeight: '800',
   },
   calendarCompanionBadge: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
     minWidth: 17,
     height: 17,
     paddingHorizontal: 4,

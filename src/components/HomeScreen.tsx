@@ -175,11 +175,7 @@ export function HomeScreen({
 
   async function deleteTask(task: Task) {
     setDeleteCandidate(null);
-    const removed = await taskState.removeTask(task);
-
-    if (removed && task.isCompleted && task.completedAt) {
-      await archiveState.unrecordCompletedTask(task, task.completedAt);
-    }
+    await taskState.removeTask(task);
   }
 
   function openComposer(date = todayKey) {
@@ -256,7 +252,10 @@ export function HomeScreen({
     for (const task of tasks) {
       if (taskState.tasks.some((item) => item.id === task.id)) {
         const removedTask = await taskState.removeTask(task);
-        if (!removedTask) success = false;
+        if (!removedTask) {
+          success = false;
+          continue;
+        }
       }
 
       if (!task.completedAt) {
@@ -889,7 +888,9 @@ export function HomeScreen({
         title="让此任务泯迹？"
         description={
           deleteCandidate
-            ? `“${deleteCandidate.title}”会从清单和 Accomplished 记录中移除。`
+            ? deleteCandidate.isCompleted
+              ? `“${deleteCandidate.title}”会从当天清单中移除，但仍保留在 Accomplished 历史中。`
+              : `“${deleteCandidate.title}”会从当前清单中移除。`
             : ''
         }
         confirmLabel="泯迹"

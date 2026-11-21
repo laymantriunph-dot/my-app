@@ -9,7 +9,11 @@ import {
   updateRemoteTask,
   writeTaskCache,
 } from '../lib/taskRepository';
-import { createLocalTask } from '../taskUtils';
+import {
+  createLocalTask,
+  normalizeLongTermCategory,
+  normalizeTaskTags,
+} from '../taskUtils';
 import type { Task, TaskCategory, TaskPriority } from '../types';
 
 export type TaskState = {
@@ -27,6 +31,11 @@ export type TaskState = {
   ) => Promise<boolean>;
   toggleTask: (task: Task) => Promise<boolean>;
   removeTask: (task: Task) => Promise<boolean>;
+  updateTaskLabels: (
+    task: Task,
+    customCategory: string | null,
+    tags: string[],
+  ) => Promise<boolean>;
   refresh: () => Promise<void>;
   clearError: () => void;
 };
@@ -183,6 +192,46 @@ export function useTasks(userId?: string): TaskState {
     }
   }
 
+  async function updateTaskLabels(
+    task: Task,
+    customCategory: string | null,
+    tags: string[],
+  ) {
+    if (task.category !== 'longTerm') return false;
+
+    setError(null);
+    setIsMutating(true);
+    const nextTask: Task = {
+      ...task,
+      customCategory: normalizeLongTermCategory(customCategory),
+      tags: normalizeTaskTags(tags),
+      updatedAt: new Date().toISOString(),
+    };
+    commit((current) =>
+      current.map((item) => (item.id === task.id ? nextTask : item)),
+    );
+
+    try {
+      if (userId) {
+        const savedTask = await updateRemoteTask(userId, nextTask);
+        commit((current) =>
+          current.map((item) =>
+            item.id === task.id ? savedTask : item,
+          ),
+        );
+      }
+      return true;
+    } catch (mutationError) {
+      commit((current) =>
+        current.map((item) => (item.id === task.id ? task : item)),
+      );
+      setError(errorMessage(mutationError));
+      return false;
+    } finally {
+      setIsMutating(false);
+    }
+  }
+
   async function removeTask(task: Task) {
     setError(null);
     setIsMutating(true);
@@ -211,6 +260,7 @@ export function useTasks(userId?: string): TaskState {
     addTask,
     toggleTask,
     removeTask,
+    updateTaskLabels,
     refresh: () => load(false),
     clearError: () => setError(null),
   };

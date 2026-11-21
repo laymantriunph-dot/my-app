@@ -9,6 +9,7 @@ type TaskItemProps = {
   task: Task;
   disabled?: boolean;
   onToggle: () => void;
+  onEdit?: () => void;
   onDelete: () => void;
 };
 
@@ -25,6 +26,7 @@ export function TaskItem({
   task,
   disabled = false,
   onToggle,
+  onEdit,
   onDelete,
 }: TaskItemProps) {
   const meta = CATEGORY_META[task.category];
@@ -124,19 +126,40 @@ export function TaskItem({
         ) : null}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="泯迹 task"
-        disabled={disabled}
-        hitSlop={8}
-        onPress={onDelete}
-        style={({ pressed }) => [
-          styles.deleteButton,
-          pressed && styles.deleteButtonPressed,
-        ]}
-      >
-        <Ionicons name="trash-outline" size={18} color={colors.inkFaint} />
-      </Pressable>
+      <View style={styles.actions}>
+        {!task.isCompleted && task.category === 'longTerm' && onEdit ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="编辑遐筹分类和标签"
+            disabled={disabled}
+            hitSlop={6}
+            onPress={onEdit}
+            style={({ pressed }) => [
+              styles.iconButton,
+              pressed && styles.iconButtonPressed,
+            ]}
+          >
+            <Ionicons
+              name="options-outline"
+              size={17}
+              color={colors.longTerm}
+            />
+          </Pressable>
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="泯迹 task"
+          disabled={disabled}
+          hitSlop={6}
+          onPress={onDelete}
+          style={({ pressed }) => [
+            styles.iconButton,
+            pressed && styles.iconButtonPressed,
+          ]}
+        >
+          <Ionicons name="trash-outline" size={17} color={colors.inkFaint} />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -255,14 +278,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  deleteButton: {
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+  },
+  iconButton: {
     width: 30,
     height: 30,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteButtonPressed: {
+  iconButtonPressed: {
     backgroundColor: colors.surfaceMuted,
   },
 });

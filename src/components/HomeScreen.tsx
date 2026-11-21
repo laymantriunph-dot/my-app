@@ -19,6 +19,7 @@ import {
 
 import { useArchives } from '../hooks/useArchives';
 import { useFocusSessions } from '../hooks/useFocusSessions';
+import { useLongTermCategoryDefaults } from '../hooks/useLongTermCategoryDefaults';
 import { useMotivation } from '../hooks/useMotivation';
 import { useTaskComposerPreference } from '../hooks/useTaskComposerPreference';
 import type { TaskState } from '../hooks/useTasks';
@@ -40,6 +41,7 @@ import {
   type TaskPriority,
 } from '../types';
 import { ArchiveModal } from './ArchiveModal';
+import { CategoryDefaultsModal } from './CategoryDefaultsModal';
 import { ConfirmDialog } from './ConfirmDialog';
 import { DayPreviewModal } from './DayPreviewModal';
 import { FocusHistoryModal } from './FocusHistoryModal';
@@ -49,6 +51,7 @@ import { ProgressDial } from './ProgressDial';
 import { RecordScreen } from './RecordScreen';
 import { TaskComposer } from './TaskComposer';
 import { TaskItem } from './TaskItem';
+import { LongTermTaskEditor } from './LongTermTaskEditor';
 
 type HomeScreenProps = {
   user: AuthUser | null;
@@ -78,6 +81,7 @@ export function HomeScreen({
   const focusState = useFocusSessions(user?.id);
   const motivationState = useMotivation(user?.id);
   const composerPreference = useTaskComposerPreference(user?.id, 'today');
+  const longTermCategoryDefaults = useLongTermCategoryDefaults(user?.id);
   const [activeSection, setActiveSection] = useState<MainSection>('energy');
   const [activeCategory, setActiveCategory] =
     useState<TaskCategory>('today');
@@ -88,6 +92,11 @@ export function HomeScreen({
   const [plannerVisible, setPlannerVisible] = useState(false);
   const [dayPreviewVisible, setDayPreviewVisible] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<Task | null>(null);
+  const [editingLongTermTask, setEditingLongTermTask] = useState<Task | null>(
+    null,
+  );
+  const [categoryDefaultsVisible, setCategoryDefaultsVisible] =
+    useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [todayKey, setTodayKey] = useState(getLocalDateKey());
   const [planningDate, setPlanningDate] = useState(todayKey);
@@ -405,11 +414,6 @@ export function HomeScreen({
             <Ionicons name="pencil-outline" size={14} color={colors.inkFaint} />
           </View>
         </Pressable>
-        <Text style={styles.greetingHint}>
-          {stats.remaining === 0 && stats.total > 0
-            ? '今天的清单已经全部完成。'
-            : `还有 ${stats.remaining} 件事，慢慢来，先做最重要的一件。`}
-        </Text>
       </View>
 
       <View style={styles.categoryCards}>
@@ -696,17 +700,6 @@ export function HomeScreen({
         </Pressable>
       ) : null}
 
-      <View style={styles.todoTools}>
-        <Ionicons
-          name="sparkles-outline"
-          size={15}
-          color={colors.inkFaint}
-        />
-        <Text style={styles.autoArchiveText}>
-          {activeMeta.label}任务完成后会自动保存在 Accomplished
-        </Text>
-      </View>
-
       {taskState.error || archiveState.error ? (
         <View style={styles.errorBanner}>
           <Ionicons
@@ -810,6 +803,11 @@ export function HomeScreen({
                     task={item}
                     disabled={taskState.isMutating}
                     onToggle={() => void toggleTaskAndArchive(item)}
+                    onEdit={
+                      item.category === 'longTerm'
+                        ? () => setEditingLongTermTask(item)
+                        : undefined
+                    }
                     onDelete={() => confirmDelete(item)}
                   />
                 )}
@@ -828,21 +826,23 @@ export function HomeScreen({
                       <Text style={styles.taskSectionTitle}>
                         {section.title}
                       </Text>
-                      <View
-                        style={[
-                          styles.taskSectionCount,
-                          { backgroundColor: section.softColor },
-                        ]}
-                      >
-                        <Text
+                      {activeCategory === 'today' ? (
+                        <View
                           style={[
-                            styles.taskSectionCountText,
-                            { color: section.color },
+                            styles.taskSectionCount,
+                            { backgroundColor: section.softColor },
                           ]}
                         >
-                          {section.data.length}
-                        </Text>
-                      </View>
+                          <Text
+                            style={[
+                              styles.taskSectionCountText,
+                              { color: section.color },
+                            ]}
+                          >
+                            {section.data.length}
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
                     <Text style={styles.taskSectionHint}>{section.hint}</Text>
                   </View>
@@ -1067,11 +1067,37 @@ export function HomeScreen({
           initialCategory={composerCategory}
         initialDate={composerDate}
         isSubmitting={taskState.isMutating}
+        categorySuggestions={longTermCategoryDefaults.categories}
         onClose={() => setComposerVisible(false)}
+        onEditCategoryDefaults={() => setCategoryDefaultsVisible(true)}
         onCategoryChange={(category) =>
           void composerPreference.setPreferredCategory(category)
         }
         onSubmit={addTask}
+      />
+
+      <LongTermTaskEditor
+        visible={editingLongTermTask !== null}
+        task={editingLongTermTask}
+        categorySuggestions={longTermCategoryDefaults.categories}
+        isSubmitting={taskState.isMutating}
+        onClose={() => setEditingLongTermTask(null)}
+        onEditDefaults={() => setCategoryDefaultsVisible(true)}
+        onSave={async (task, category, tags) => {
+          const saved = await taskState.updateTaskLabels(task, category, tags);
+          if (saved) {
+            setLongTermCategoryFilter(null);
+            setLongTermTagFilter(null);
+          }
+          return saved;
+        }}
+      />
+
+      <CategoryDefaultsModal
+        visible={categoryDefaultsVisible}
+        categories={longTermCategoryDefaults.categories}
+        onClose={() => setCategoryDefaultsVisible(false)}
+        onSave={longTermCategoryDefaults.setCategories}
       />
 
       <ArchiveModal
@@ -1261,12 +1287,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 10,
     backgroundColor: colors.surfaceMuted,
-  },
-  greetingHint: {
-    marginTop: 7,
-    color: colors.inkSoft,
-    fontSize: 13,
-    lineHeight: 20,
   },
   progressCard: {
     minHeight: 168,
@@ -1504,13 +1524,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.4,
   },
-  todoTools: {
-    marginTop: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 3,
-  },
   longTermFilters: {
     marginTop: 12,
     paddingTop: 12,
@@ -1671,12 +1684,6 @@ const styles = StyleSheet.create({
     marginTop: 15,
     flexDirection: 'row',
     gap: 8,
-  },
-  autoArchiveText: {
-    flex: 1,
-    color: colors.inkFaint,
-    fontSize: 9,
-    lineHeight: 14,
   },
   successButton: {
     flex: 1,

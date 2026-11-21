@@ -34,7 +34,9 @@ type TaskComposerProps = {
   initialCategory: TaskCategory;
   initialDate: string;
   isSubmitting: boolean;
+  categorySuggestions: string[];
   onClose: () => void;
+  onEditCategoryDefaults: () => void;
   onCategoryChange: (category: TaskCategory) => void;
   onSubmit: (
     title: string,
@@ -46,14 +48,14 @@ type TaskComposerProps = {
   ) => Promise<boolean>;
 };
 
-const LONG_TERM_CATEGORY_SUGGESTIONS = ['备考', '锻炼', '阅读', '创作', '生活'];
-
 export function TaskComposer({
   visible,
   initialCategory,
   initialDate,
   isSubmitting,
+  categorySuggestions,
   onClose,
+  onEditCategoryDefaults,
   onCategoryChange,
   onSubmit,
 }: TaskComposerProps) {
@@ -223,7 +225,18 @@ export function TaskComposer({
             <View style={styles.longTermSection}>
               <View style={styles.longTermHeading}>
                 <Text style={styles.longTermLabel}>分类</Text>
-                <Text style={styles.longTermOptional}>可选</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onEditCategoryDefaults}
+                  style={styles.editDefaultsButton}
+                >
+                  <Ionicons
+                    name="options-outline"
+                    size={12}
+                    color={colors.inkSoft}
+                  />
+                  <Text style={styles.editDefaultsText}>编辑默认</Text>
+                </Pressable>
               </View>
               <TextInput
                 value={longTermCategory}
@@ -235,7 +248,7 @@ export function TaskComposer({
                 style={styles.longTermInput}
               />
               <View style={styles.suggestionRow}>
-                {LONG_TERM_CATEGORY_SUGGESTIONS.map((suggestion) => {
+                {categorySuggestions.map((suggestion) => {
                   const isSelected = longTermCategory === suggestion;
                   return (
                     <Pressable
@@ -547,6 +560,20 @@ const styles = StyleSheet.create({
   longTermOptional: {
     color: colors.inkFaint,
     fontSize: 9,
+  },
+  editDefaultsButton: {
+    minHeight: 27,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+  },
+  editDefaultsText: {
+    color: colors.inkSoft,
+    fontSize: 8,
+    fontWeight: '700',
   },
   longTermInput: {
     height: 46,

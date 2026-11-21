@@ -6,7 +6,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CATEGORY_META,
   getLocalDateKey,
-  getUpcomingDays,
   PRIORITY_META,
 } from '../taskUtils';
 import { colors, radii, shadows } from '../theme';
@@ -26,6 +24,7 @@ import {
   type TaskCategory,
   type TaskPriority,
 } from '../types';
+import { PlannerModal } from './PlannerModal';
 
 type TaskComposerProps = {
   visible: boolean;
@@ -57,9 +56,11 @@ export function TaskComposer({
   const [priority, setPriority] = useState<TaskPriority>('primary');
   const [scheduledDate, setScheduledDate] = useState(initialDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const dayOptions = getUpcomingDays(30);
-  const selectedDay =
-    dayOptions.find((day) => day.key === scheduledDate) ?? dayOptions[0];
+  const selectedDateLabel = new Intl.DateTimeFormat('zh-CN', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(new Date(`${scheduledDate}T12:00:00`));
 
   useEffect(() => {
     if (visible) {
@@ -85,7 +86,8 @@ export function TaskComposer({
   }
 
   return (
-    <Modal
+    <>
+      <Modal
       visible={visible}
       transparent
       animationType="slide"
@@ -225,7 +227,7 @@ export function TaskComposer({
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={() => setShowDatePicker((current) => !current)}
+              onPress={() => setShowDatePicker(true)}
               style={styles.scheduleButton}
             >
               <View style={styles.scheduleButtonIcon}>
@@ -237,63 +239,16 @@ export function TaskComposer({
               </View>
               <View style={styles.scheduleButtonCopy}>
                 <Text style={styles.scheduleButtonTitle}>
-                  {selectedDay.label} · {selectedDay.shortDate}
+                  {scheduledDate === getLocalDateKey()
+                    ? '今天'
+                    : selectedDateLabel}
                 </Text>
                 <Text style={styles.scheduleButtonHint}>
                   点击修改安排日期
                 </Text>
               </View>
-              <Ionicons
-                name={showDatePicker ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color={colors.inkFaint}
-              />
+              <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
             </Pressable>
-
-            {showDatePicker ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.dayRail}
-              >
-                {dayOptions.map((day) => {
-                  const selected = day.key === scheduledDate;
-
-                  return (
-                    <Pressable
-                      key={day.key}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected }}
-                      onPress={() => {
-                        setScheduledDate(day.key);
-                        setShowDatePicker(false);
-                      }}
-                      style={[
-                        styles.dayButton,
-                        selected && styles.dayButtonSelected,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.dayLabel,
-                          selected && styles.dayLabelSelected,
-                        ]}
-                      >
-                        {day.label}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.dayDate,
-                          selected && styles.dayDateSelected,
-                        ]}
-                      >
-                        {day.shortDate}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            ) : null}
           </View>
 
           <Pressable
@@ -313,10 +268,7 @@ export function TaskComposer({
                 <Text style={styles.submitText}>
                   {scheduledDate === getLocalDateKey()
                     ? '加入谋篇'
-                    : `安排到 ${
-                        dayOptions.find((day) => day.key === scheduledDate)
-                          ?.shortDate ?? scheduledDate
-                      }`}
+                    : `安排到 ${selectedDateLabel}`}
                 </Text>
                 <Ionicons name="arrow-up" size={19} color={colors.white} />
               </>
@@ -324,7 +276,16 @@ export function TaskComposer({
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+      </Modal>
+      <PlannerModal
+        visible={showDatePicker}
+        selectedDate={scheduledDate}
+        tasks={[]}
+        selectionOnly
+        onClose={() => setShowDatePicker(false)}
+        onSelect={setScheduledDate}
+      />
+    </>
   );
 }
 

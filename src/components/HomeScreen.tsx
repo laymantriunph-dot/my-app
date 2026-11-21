@@ -87,17 +87,8 @@ export function HomeScreen({
   const [deleteCandidate, setDeleteCandidate] = useState<Task | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [todayKey, setTodayKey] = useState(getLocalDateKey());
-  const [selectedDate, setSelectedDate] = useState(todayKey);
-  const isTodayView = selectedDate === todayKey;
-  const selectedDateLabel = useMemo(
-    () =>
-      new Intl.DateTimeFormat('zh-CN', {
-        month: 'long',
-        day: 'numeric',
-        weekday: 'long',
-      }).format(new Date(`${selectedDate}T12:00:00`)),
-    [selectedDate],
-  );
+  const [planningDate, setPlanningDate] = useState(todayKey);
+  const [composerDate, setComposerDate] = useState(todayKey);
   const todayTasks = taskState.tasks.filter(
     (task) =>
       task.category === 'today' &&
@@ -111,10 +102,7 @@ export function HomeScreen({
       sortTasks(
         taskState.tasks.filter((task) => {
           if (task.category !== activeCategory) return false;
-          const scheduledForView = isTodayView
-            ? task.scheduledDate <= todayKey
-            : task.scheduledDate === selectedDate;
-          if (!scheduledForView) return false;
+          if (task.scheduledDate > todayKey) return false;
           if (activeCategory === 'today') {
             return (
               !task.isCompleted ||
@@ -127,7 +115,7 @@ export function HomeScreen({
           return !task.isCompleted;
         }),
       ),
-    [activeCategory, isTodayView, selectedDate, taskState.tasks, todayKey],
+    [activeCategory, taskState.tasks, todayKey],
   );
   const pendingTasks = visibleTasks.filter((task) => !task.isCompleted);
   const completedTasks = visibleTasks.filter((task) => task.isCompleted);
@@ -171,12 +159,8 @@ export function HomeScreen({
   const allPendingCount = taskState.tasks.filter(
     (task) => !task.isCompleted && task.scheduledDate <= todayKey,
   ).length;
-  const selectedDateCount = taskState.tasks.filter(
-    (task) =>
-      !task.isCompleted &&
-      (isTodayView
-        ? task.scheduledDate <= todayKey
-        : task.scheduledDate === selectedDate),
+  const futurePlannedCount = taskState.tasks.filter(
+    (task) => !task.isCompleted && task.scheduledDate > todayKey,
   ).length;
 
   function confirmDelete(task: Task) {
@@ -192,7 +176,8 @@ export function HomeScreen({
     }
   }
 
-  function openComposer() {
+  function openComposer(date = todayKey) {
+    setComposerDate(date);
     setComposerVisible(true);
   }
 
@@ -211,9 +196,10 @@ export function HomeScreen({
 
     if (saved) {
       await composerPreference.setPreferredCategory(category);
-      setActiveCategory(category);
-      setSelectedDate(scheduledDate);
-      setShowCompleted(false);
+      if (scheduledDate <= todayKey) {
+        setActiveCategory(category);
+        setShowCompleted(false);
+      }
     }
 
     return saved;
@@ -284,12 +270,6 @@ export function HomeScreen({
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (selectedDate < todayKey) {
-      setSelectedDate(todayKey);
-    }
-  }, [selectedDate, todayKey]);
-
   const listHeader = (
     <View>
       <View style={styles.topActions}>
@@ -355,7 +335,7 @@ export function HomeScreen({
         </Text>
       </View>
 
-      {activeCategory === 'today' && isTodayView ? (
+      {activeCategory === 'today' ? (
         <LinearGradient
           colors={['#354950', '#52666B']}
           start={{ x: 0, y: 0 }}
@@ -375,30 +355,20 @@ export function HomeScreen({
         <View style={styles.reflectionCard}>
           <View style={styles.reflectionIcon}>
             <Ionicons
-              name={
-                activeCategory === 'today'
-                  ? 'calendar-outline'
-                  : 'infinite-outline'
-              }
+              name="infinite-outline"
               size={22}
               color="#E8E0CB"
             />
           </View>
           <View style={styles.reflectionCopy}>
             <Text style={styles.reflectionEyebrow}>
-              {activeCategory === 'today'
-                ? `朝计 · ${selectedDateLabel}`
-                : '遐筹 · LONG VIEW'}
+              遐筹 · LONG VIEW
             </Text>
             <Text style={styles.reflectionTitle}>
-              {activeCategory === 'today'
-                ? '提前安排，不让未来的自己匆忙。'
-                : '不急着完成，但始终向前。'}
+              不急着完成，但始终向前。
             </Text>
             <Text style={styles.reflectionHint}>
-              {activeCategory === 'today'
-                ? `${pendingTasks.length} 项任务已进入这一天`
-                : `${pendingTasks.length} 项遐筹正在蓄势`}
+              {pendingTasks.length} 项遐筹正在蓄势
             </Text>
           </View>
         </View>
@@ -411,9 +381,7 @@ export function HomeScreen({
             (task) =>
               task.category === key &&
               !task.isCompleted &&
-              (isTodayView
-                ? task.scheduledDate <= todayKey
-                : task.scheduledDate === selectedDate),
+              task.scheduledDate <= todayKey,
           );
           const categoryStats = getTaskStats(categoryTasks);
           const isActive = activeCategory === key;
@@ -471,11 +439,11 @@ export function HomeScreen({
         </View>
         <View style={styles.calendarCopy}>
           <Text style={styles.calendarTitle}>
-            {isTodayView ? 'Today' : selectedDateLabel}
+            Calendar
           </Text>
           <Text style={styles.calendarHint}>
-            {selectedDateCount > 0
-              ? `${selectedDateCount} 项已安排`
+            {futurePlannedCount > 0
+              ? `${futurePlannedCount} 项未来计划`
               : '打开日历安排未来'}
           </Text>
         </View>
@@ -519,17 +487,13 @@ export function HomeScreen({
         <View>
           <Text style={styles.listTitle}>
             {activeCategory === 'today'
-              ? isTodayView
-                ? 'Lead the day.'
-                : 'Plan ahead, gently.'
+              ? 'Lead the day.'
               : 'Think beyond today.'}
           </Text>
           <Text style={styles.listDescription}>
-            {isTodayView
-              ? activeCategory === 'today'
-                ? '先完成 Primary，再让其余事情各归其位。'
-                : '让重要而不紧急的事，慢慢生长。'
-              : `${selectedDateLabel} · 提前看见，按时发生。`}
+            {activeCategory === 'today'
+              ? '先完成 Primary，再让其余事情各归其位。'
+              : '让重要而不紧急的事，慢慢生长。'}
           </Text>
         </View>
         <Text style={styles.listCount}>
@@ -678,7 +642,7 @@ export function HomeScreen({
                 }
                 ListFooterComponent={
                   <View>
-                    {activeCategory === 'today' && isTodayView ? (
+                    {activeCategory === 'today' ? (
                       <View style={styles.completedSection}>
                         <Pressable
                           accessibilityRole="button"
@@ -748,7 +712,7 @@ export function HomeScreen({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="添加待办"
-              onPress={openComposer}
+              onPress={() => openComposer()}
               style={({ pressed }) => [
                 styles.addButton,
                 pressed && styles.addButtonPressed,
@@ -851,7 +815,7 @@ export function HomeScreen({
       <TaskComposer
         visible={composerVisible}
         initialCategory={composerPreference.preferredCategory}
-        initialDate={selectedDate}
+        initialDate={composerDate}
         isSubmitting={taskState.isMutating}
         onClose={() => setComposerVisible(false)}
         onCategoryChange={(category) =>
@@ -886,12 +850,13 @@ export function HomeScreen({
 
       <PlannerModal
         visible={plannerVisible}
-        selectedDate={selectedDate}
+        selectedDate={planningDate}
         tasks={taskState.tasks}
         onClose={() => setPlannerVisible(false)}
-        onSelect={(date) => {
-          setSelectedDate(date);
-          setShowCompleted(false);
+        onSelect={setPlanningDate}
+        onPlanDate={(date) => {
+          openComposer(date);
+          setPlannerVisible(false);
         }}
       />
 

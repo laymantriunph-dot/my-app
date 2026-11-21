@@ -11,7 +11,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -49,7 +48,6 @@ import { DayPreviewModal } from './DayPreviewModal';
 import { FocusHistoryModal } from './FocusHistoryModal';
 import { MotivationModal } from './MotivationModal';
 import { PlannerModal } from './PlannerModal';
-import { ProgressDial } from './ProgressDial';
 import { RecordScreen } from './RecordScreen';
 import { TaskComposer } from './TaskComposer';
 import { TaskItem } from './TaskItem';
@@ -344,49 +342,6 @@ export function HomeScreen({
 
   const listHeader = (
     <View>
-      <View style={styles.topActions}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setArchiveVisible(true)}
-          style={({ pressed }) => [
-            styles.successButton,
-            pressed && styles.toolPressed,
-          ]}
-        >
-          <View style={styles.successIcon}>
-            <Ionicons name="trophy-outline" size={18} color="#F2E6CD" />
-          </View>
-          <View style={styles.successCopy}>
-            <Text style={styles.successTitle}>Accomplished</Text>
-          </View>
-          <View style={styles.successCount}>
-            <Text style={styles.successCountText}>
-              {archiveState.archives.length}
-            </Text>
-            <Ionicons name="chevron-forward" size={15} color="#D9CEB6" />
-          </View>
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setFocusHistoryVisible(true)}
-          style={({ pressed }) => [
-            styles.focusArchiveButton,
-            pressed && styles.toolPressed,
-          ]}
-        >
-          <View style={styles.focusArchiveIcon}>
-            <Ionicons name="timer-outline" size={18} color={colors.longTerm} />
-          </View>
-          <View>
-            <Text style={styles.focusArchiveTitle}>Focus</Text>
-            <Text style={styles.focusArchiveHint}>
-              {focusState.sessions.length} 条计时
-            </Text>
-          </View>
-        </Pressable>
-      </View>
-
       <View style={styles.greetingBlock}>
         <Text style={styles.dateLabel}>{getTodayLabel()}</Text>
         <Pressable
@@ -402,7 +357,7 @@ export function HomeScreen({
         </Pressable>
       </View>
 
-      <View style={styles.categoryCards}>
+      <View style={styles.categoryNav}>
         {ACTIVE_TASK_CATEGORIES.map((key) => {
           const meta = CATEGORY_META[key];
           const categoryTasks = taskState.tasks.filter(
@@ -425,228 +380,80 @@ export function HomeScreen({
                 setShowCompleted(false);
               }}
               style={({ pressed }) => [
-                styles.categoryCard,
+                styles.categoryNavItem,
                 {
                   backgroundColor: isActive ? meta.softColor : colors.surface,
-                  borderColor: isActive ? meta.color : colors.line,
+                  borderColor: isActive ? meta.color : 'transparent',
                 },
-                isActive
-                  ? styles.categoryCardActive
-                  : styles.categoryCardIdle,
-                pressed && styles.categoryCardPressed,
+                pressed && styles.categoryNavPressed,
               ]}
             >
-              <View style={styles.categoryTop}>
-                <View
+              <View
+                style={[
+                  styles.categoryNavIcon,
+                  {
+                    backgroundColor: isActive
+                      ? meta.color
+                      : meta.softColor,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={meta.icon}
+                  size={16}
+                  color={isActive ? colors.white : meta.color}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.categoryNavLabel,
+                  { color: isActive ? meta.color : colors.inkSoft },
+                ]}
+              >
+                {meta.label}
+              </Text>
+              {key === 'today' && categoryStats.remaining > 0 ? (
+                <Text
                   style={[
-                    styles.categoryIcon,
+                    styles.categoryNavCount,
                     {
+                      color: meta.color,
                       backgroundColor: isActive
-                        ? meta.color
+                        ? colors.surface
                         : meta.softColor,
                     },
                   ]}
                 >
-                  <Ionicons
-                    name={meta.icon}
-                    size={21}
-                    color={isActive ? colors.white : meta.color}
-                  />
-                </View>
-                {key === 'today' ? (
-                  <View
-                    style={[
-                      styles.categoryBadge,
-                      {
-                        backgroundColor: isActive
-                          ? colors.surface
-                          : meta.softColor,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.categoryBadgeText,
-                        { color: meta.color },
-                      ]}
-                    >
-                      {categoryStats.remaining > 99
-                        ? '99+'
-                        : categoryStats.remaining}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-              <View style={styles.categoryCopy}>
-                <Text
-                  style={[
-                    styles.categoryName,
-                    { color: isActive ? meta.color : colors.ink },
-                  ]}
-                >
-                  {meta.label}
+                  {categoryStats.remaining > 99
+                    ? '99+'
+                    : categoryStats.remaining}
                 </Text>
-                <Text
-                  style={[
-                    styles.categoryEyebrow,
-                    {
-                      color: isActive
-                        ? meta.color
-                        : colors.inkFaint,
-                    },
-                  ]}
-                >
-                  {key === 'today' ? 'TODAY' : 'LONG VIEW'}
-                </Text>
-              </View>
+              ) : null}
             </Pressable>
           );
         })}
       </View>
 
       {activeCategory === 'today' ? (
-        <LinearGradient
-          colors={['#405A4D', '#6A8376']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.progressCard}
-        >
-          <View style={styles.progressCopy}>
-            <Text style={styles.progressEyebrow}>朝计 · TODAY</Text>
-            <Text style={styles.progressStatement}>把今天，稳稳完成。</Text>
-            <Text style={styles.progressCaption}>
-              {stats.completed} accomplished · {stats.remaining} remaining
+        <View style={styles.compactProgressCard}>
+          <View style={styles.compactProgressCopy}>
+            <Text style={styles.compactProgressLabel}>今日进度</Text>
+            <Text style={styles.compactProgressValue}>
+              {stats.completed} / {stats.total}
             </Text>
           </View>
-          <ProgressDial percentage={stats.percentage} />
-        </LinearGradient>
-      ) : (
-        <View style={styles.reflectionCard}>
-          <View style={styles.reflectionIcon}>
-            <Ionicons
-              name="infinite-outline"
-              size={22}
-              color="#EDE3CD"
+          <View style={styles.compactProgressTrack}>
+            <View
+              style={[
+                styles.compactProgressFill,
+                { width: `${stats.percentage}%` },
+              ]}
             />
           </View>
-          <View style={styles.reflectionCopy}>
-            <Text style={styles.reflectionEyebrow}>
-              遐筹 · LONG VIEW
-            </Text>
-            <Text style={styles.reflectionTitle}>
-              把重要的事，放在长期视野里。
-            </Text>
-            <Text style={styles.reflectionHint}>
-              持续推进 · 不计入今日完成率
-            </Text>
-          </View>
+          <Text style={styles.compactProgressPercent}>
+            {stats.percentage}%
+          </Text>
         </View>
-      )}
-
-      {activeCategory === 'longTerm' &&
-      longTermCategoryOptions.length > 0 ? (
-        <View style={styles.longTermFilters}>
-          <View style={styles.longTermFilterHeading}>
-            <Text style={styles.longTermFilterTitle}>筛选遐筹</Text>
-            {longTermCategoryFilter ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setLongTermCategoryFilter(null)}
-                style={styles.clearFilterButton}
-              >
-                <Text style={styles.clearFilterText}>清除</Text>
-              </Pressable>
-            ) : (
-              <Text style={styles.longTermFilterHint}>按分类查看</Text>
-            )}
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.longTermFilterRail}
-          >
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{
-                selected: longTermCategoryFilter === null,
-              }}
-              onPress={() => setLongTermCategoryFilter(null)}
-              style={[
-                styles.filterChip,
-                longTermCategoryFilter === null && styles.filterChipAllActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  longTermCategoryFilter === null &&
-                    styles.filterChipTextAllActive,
-                ]}
-              >
-                全部
-              </Text>
-            </Pressable>
-
-            {longTermCategoryOptions.map((category) => {
-              const isActive = longTermCategoryFilter === category;
-              return (
-                <Pressable
-                  key={`category:${category}`}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isActive }}
-                  onPress={() =>
-                    setLongTermCategoryFilter(isActive ? null : category)
-                  }
-                  style={[
-                    styles.filterChip,
-                    styles.categoryFilterChip,
-                    isActive && styles.categoryFilterChipActive,
-                  ]}
-                >
-                  <Ionicons
-                    name="folder-outline"
-                    size={12}
-                    color={isActive ? colors.white : colors.longTerm}
-                  />
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      { color: colors.longTerm },
-                      isActive && styles.filterChipTextActive,
-                    ]}
-                  >
-                    {category}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      ) : null}
-
-      {activeCategory === 'today' ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="打开日历"
-          onPress={() => setPlannerVisible(true)}
-          style={({ pressed }) => [
-            styles.calendarButton,
-            pressed && styles.toolPressed,
-          ]}
-        >
-          <View style={styles.calendarIcon}>
-            <Ionicons name="calendar-outline" size={18} color={colors.ink} />
-          </View>
-          <View style={styles.calendarCopy}>
-            <Text style={styles.calendarTitle}>Calendar</Text>
-            <Text style={styles.calendarHint}>
-              {futurePlannedCount > 0
-                ? `${futurePlannedCount} 项未来计划`
-                : '打开日历安排未来'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
-        </Pressable>
       ) : null}
 
       {taskState.error || archiveState.error ? (
@@ -671,22 +478,97 @@ export function HomeScreen({
         </View>
       ) : null}
 
-      <View style={styles.listHeading}>
-        <View>
-          <Text style={styles.listTitle}>
-            {activeCategory === 'today'
-              ? 'Lead the day.'
-              : 'Think beyond today.'}
+      <View style={styles.listToolbar}>
+        <View style={styles.listToolbarCopy}>
+          <Text style={styles.listToolbarTitle}>
+            {activeCategory === 'today' ? '今天要做' : '长期提醒'}
           </Text>
-          {activeCategory === 'today' ? (
-            <Text style={styles.listDescription}>
-              先完成 Primary，再让其余事情各归其位。
-            </Text>
-          ) : null}
+          <Text style={styles.listToolbarMeta}>
+            {pendingTasks.length} 项待办
+          </Text>
         </View>
-        <Text style={styles.listCount}>
-          {pendingTasks.length} 待办 · {completedTasks.length} 完成
-        </Text>
+
+        {activeCategory === 'today' ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="打开日历查看未来待办"
+            onPress={() => setPlannerVisible(true)}
+            style={({ pressed }) => [
+              styles.compactCalendarButton,
+              pressed && styles.toolPressed,
+            ]}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={16}
+              color={colors.longTerm}
+            />
+            <Text style={styles.compactCalendarText}>未来</Text>
+            {futurePlannedCount > 0 ? (
+              <View style={styles.compactCalendarBadge}>
+                <Text style={styles.compactCalendarBadgeText}>
+                  {futurePlannedCount > 99 ? '99+' : futurePlannedCount}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        ) : longTermCategoryOptions.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.inlineFilterScroll}
+            contentContainerStyle={styles.inlineFilterRail}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{
+                selected: longTermCategoryFilter === null,
+              }}
+              onPress={() => setLongTermCategoryFilter(null)}
+              style={[
+                styles.inlineFilterChip,
+                longTermCategoryFilter === null &&
+                  styles.inlineFilterChipActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.inlineFilterText,
+                  longTermCategoryFilter === null &&
+                    styles.inlineFilterTextActive,
+                ]}
+              >
+                全部
+              </Text>
+            </Pressable>
+            {longTermCategoryOptions.map((category) => {
+              const isActive = longTermCategoryFilter === category;
+              return (
+                <Pressable
+                  key={category}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  onPress={() =>
+                    setLongTermCategoryFilter(isActive ? null : category)
+                  }
+                  style={[
+                    styles.inlineFilterChip,
+                    isActive && styles.inlineFilterChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.inlineFilterText,
+                      isActive && styles.inlineFilterTextActive,
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        ) : null}
       </View>
 
       {taskState.isLoading ? (
@@ -713,27 +595,68 @@ export function HomeScreen({
               </Text>
             </View>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="账号信息"
-            onPress={openAccountMenu}
-            style={({ pressed }) => [
-              styles.avatar,
-              pressed && styles.avatarPressed,
-            ]}
-          >
-            <Text style={styles.avatarText}>{avatarLetter}</Text>
-            <View
-              style={[
-                styles.accountDot,
-                {
-                  backgroundColor: isLocal
-                    ? colors.secondary
-                    : colors.success,
-                },
+          <View style={styles.topBarActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Accomplished 已完成记录"
+              onPress={() => setArchiveVisible(true)}
+              style={({ pressed }) => [
+                styles.compactTopButton,
+                pressed && styles.toolPressed,
               ]}
-            />
-          </Pressable>
+            >
+              <Ionicons
+                name="trophy-outline"
+                size={18}
+                color={colors.secondary}
+              />
+              {archiveState.archives.length > 0 ? (
+                <View style={styles.compactTopBadge}>
+                  <Text style={styles.compactTopBadgeText}>
+                    {archiveState.archives.length > 99
+                      ? '99+'
+                      : archiveState.archives.length}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Focus 计时记录"
+              onPress={() => setFocusHistoryVisible(true)}
+              style={({ pressed }) => [
+                styles.compactTopButton,
+                pressed && styles.toolPressed,
+              ]}
+            >
+              <Ionicons
+                name="timer-outline"
+                size={18}
+                color={colors.longTerm}
+              />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="账号信息"
+              onPress={openAccountMenu}
+              style={({ pressed }) => [
+                styles.avatar,
+                pressed && styles.avatarPressed,
+              ]}
+            >
+              <Text style={styles.avatarText}>{avatarLetter}</Text>
+              <View
+                style={[
+                  styles.accountDot,
+                  {
+                    backgroundColor: isLocal
+                      ? colors.secondary
+                      : colors.success,
+                  },
+                ]}
+              />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.pages}>
@@ -763,19 +686,19 @@ export function HomeScreen({
                 ItemSeparatorComponent={() => (
                   <View style={styles.separator} />
                 )}
-                renderSectionHeader={({ section }) => (
-                  <View style={styles.taskSectionHeader}>
-                    <View style={styles.taskSectionTitleRow}>
-                      <View
-                        style={[
-                          styles.taskSectionDot,
-                          { backgroundColor: section.color },
-                        ]}
-                      />
-                      <Text style={styles.taskSectionTitle}>
-                        {section.title}
-                      </Text>
-                      {activeCategory === 'today' ? (
+                renderSectionHeader={({ section }) =>
+                  activeCategory === 'longTerm' ? null : (
+                    <View style={styles.taskSectionHeader}>
+                      <View style={styles.taskSectionTitleRow}>
+                        <View
+                          style={[
+                            styles.taskSectionDot,
+                            { backgroundColor: section.color },
+                          ]}
+                        />
+                        <Text style={styles.taskSectionTitle}>
+                          {section.title}
+                        </Text>
                         <View
                           style={[
                             styles.taskSectionCount,
@@ -791,11 +714,11 @@ export function HomeScreen({
                             {section.data.length}
                           </Text>
                         </View>
-                      ) : null}
+                      </View>
+                      <Text style={styles.taskSectionHint}>{section.hint}</Text>
                     </View>
-                    <Text style={styles.taskSectionHint}>{section.hint}</Text>
-                  </View>
-                )}
+                  )
+                }
                 renderSectionFooter={({ section }) =>
                   section.data.length === 0 ? (
                     <View style={styles.sectionEmpty}>
@@ -1139,16 +1062,16 @@ const styles = StyleSheet.create({
   },
   listFrame: {
     flex: 1,
-    marginHorizontal: 20,
+    marginHorizontal: 18,
   },
   listContent: {
-    paddingTop: 8,
+    paddingTop: 3,
     paddingBottom: 104,
   },
   topBar: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 4,
+    marginHorizontal: 18,
+    marginTop: 6,
+    marginBottom: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1182,10 +1105,44 @@ const styles = StyleSheet.create({
     color: colors.inkFaint,
     fontSize: 10,
   },
+  topBarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  compactTopButton: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 13,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  compactTopBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9,
+    backgroundColor: colors.secondary,
+    borderWidth: 1.5,
+    borderColor: colors.canvas,
+  },
+  compactTopBadgeText: {
+    color: colors.white,
+    fontSize: 8,
+    fontWeight: '800',
+  },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 15,
+    width: 38,
+    height: 38,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceMuted,
@@ -1211,8 +1168,8 @@ const styles = StyleSheet.create({
     borderColor: colors.canvas,
   },
   greetingBlock: {
-    marginTop: 27,
-    marginBottom: 17,
+    marginTop: 9,
+    marginBottom: 12,
   },
   dateLabel: {
     color: colors.accent,
@@ -1221,12 +1178,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.7,
   },
   greeting: {
-    marginTop: 7,
+    marginTop: 4,
     color: colors.ink,
-    fontSize: 29,
-    lineHeight: 36,
+    fontSize: 21,
+    lineHeight: 27,
     fontWeight: '800',
-    letterSpacing: -0.8,
+    letterSpacing: -0.4,
   },
   greetingRow: {
     flexDirection: 'row',
@@ -1234,13 +1191,104 @@ const styles = StyleSheet.create({
     gap: 9,
   },
   editGreetingButton: {
-    width: 30,
-    height: 30,
-    marginTop: 8,
+    width: 25,
+    height: 25,
+    marginTop: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
+    borderRadius: 8,
     backgroundColor: colors.surfaceMuted,
+  },
+  categoryNav: {
+    padding: 3,
+    flexDirection: 'row',
+    gap: 4,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceMuted,
+  },
+  categoryNavItem: {
+    flex: 1,
+    minHeight: 44,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 13,
+    borderWidth: 1,
+  },
+  categoryNavPressed: {
+    opacity: 0.68,
+  },
+  categoryNavIcon: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9,
+  },
+  categoryNavLabel: {
+    fontFamily: 'serif',
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  categoryNavCount: {
+    minWidth: 21,
+    height: 21,
+    marginLeft: 'auto',
+    paddingHorizontal: 5,
+    overflow: 'hidden',
+    borderRadius: 7,
+    fontSize: 10,
+    lineHeight: 21,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  compactProgressCard: {
+    minHeight: 52,
+    marginTop: 9,
+    paddingHorizontal: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  compactProgressCopy: {
+    width: 68,
+  },
+  compactProgressLabel: {
+    color: colors.inkFaint,
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  compactProgressValue: {
+    marginTop: 2,
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  compactProgressTrack: {
+    flex: 1,
+    height: 5,
+    overflow: 'hidden',
+    borderRadius: 3,
+    backgroundColor: colors.surfaceMuted,
+  },
+  compactProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: colors.accent,
+  },
+  compactProgressPercent: {
+    width: 34,
+    color: colors.inkSoft,
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'right',
   },
   progressCard: {
     minHeight: 168,
@@ -1734,31 +1782,92 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  listHeading: {
-    marginTop: 28,
-    marginBottom: 12,
+  listToolbar: {
+    minHeight: 44,
+    marginTop: 9,
+    marginBottom: 2,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 10,
   },
-  listTitle: {
+  listToolbarCopy: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 7,
+  },
+  listToolbarTitle: {
     color: colors.ink,
-    fontSize: 21,
+    fontSize: 17,
     fontWeight: '800',
   },
-  listDescription: {
-    marginTop: 3,
+  listToolbarMeta: {
     color: colors.inkFaint,
-    fontSize: 11,
+    fontSize: 9,
+    fontWeight: '600',
   },
-  listCount: {
-    color: colors.inkSoft,
-    fontSize: 11,
+  compactCalendarButton: {
+    minHeight: 31,
+    paddingHorizontal: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: radii.pill,
+    backgroundColor: colors.longTermSoft,
+  },
+  compactCalendarText: {
+    color: colors.longTerm,
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  compactCalendarBadge: {
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9,
+    backgroundColor: colors.surface,
+  },
+  compactCalendarBadgeText: {
+    color: colors.longTerm,
+    fontSize: 8,
+    fontWeight: '800',
+  },
+  inlineFilterScroll: {
+    flex: 1,
+    marginLeft: 2,
+  },
+  inlineFilterRail: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+    gap: 5,
+  },
+  inlineFilterChip: {
+    minHeight: 28,
+    paddingHorizontal: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  inlineFilterChipActive: {
+    backgroundColor: colors.longTerm,
+    borderColor: colors.longTerm,
+  },
+  inlineFilterText: {
+    color: colors.longTerm,
+    fontSize: 9,
     fontWeight: '700',
   },
+  inlineFilterTextActive: {
+    color: colors.white,
+  },
   taskSectionHeader: {
-    marginTop: 13,
-    marginBottom: 9,
+    marginTop: 8,
+    marginBottom: 7,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
@@ -1817,7 +1926,7 @@ const styles = StyleSheet.create({
     height: 9,
   },
   completedSection: {
-    marginTop: 26,
+    marginTop: 18,
   },
   completedHeader: {
     minHeight: 42,

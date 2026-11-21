@@ -56,10 +56,6 @@ function ArchiveTaskCard({
   const priorityMeta = PRIORITY_META[task.priority];
   const markerColor =
     task.category === 'today' ? priorityMeta.color : meta.color;
-  const categoryLabel =
-    task.category === 'today'
-      ? `${meta.label} · ${priorityMeta.label}`
-      : meta.label;
 
   return (
     <Pressable
@@ -89,14 +85,9 @@ function ArchiveTaskCard({
         <Text numberOfLines={2} style={styles.archiveCompletedTitle}>
           {task.title}
         </Text>
-        <View style={styles.archiveMetaRow}>
-          <View style={[styles.categoryDot, { backgroundColor: markerColor }]} />
-          <Text style={styles.archiveMetaStrong}>{categoryLabel}</Text>
-          <Text style={styles.archiveMetaStrong}>· 已完成</Text>
-          <Text style={styles.archiveMetaDate}>
-            {formatArchiveDate(archivedAt)}
-          </Text>
-        </View>
+        <Text style={styles.archiveMetaDate}>
+          {formatArchiveDate(archivedAt)}
+        </Text>
       </View>
     </Pressable>
   );
@@ -687,25 +678,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textDecorationLine: 'line-through',
   },
-  archiveMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  categoryDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  archiveMetaStrong: {
-    color: colors.inkFaint,
-    fontSize: 9,
-    fontWeight: '600',
-  },
   archiveMetaDate: {
     color: colors.inkFaint,
-    fontSize: 8,
-    opacity: 0.78,
+    fontSize: 9,
   },
 });

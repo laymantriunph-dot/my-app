@@ -2,7 +2,7 @@
   "name": "sanfen-todo",
   "description": "A personal mobile todo app for today, long-term and secondary tasks.",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",

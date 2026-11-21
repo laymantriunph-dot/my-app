@@ -28,7 +28,6 @@ import {
   getLocalDateKey,
   getTaskStats,
   getTodayLabel,
-  getUpcomingDays,
   PRIORITY_META,
   sortTasks,
 } from '../taskUtils';
@@ -41,9 +40,9 @@ import {
 } from '../types';
 import { ArchiveModal } from './ArchiveModal';
 import { ConfirmDialog } from './ConfirmDialog';
-import { DateRail } from './DateRail';
 import { FocusHistoryModal } from './FocusHistoryModal';
 import { MotivationModal } from './MotivationModal';
+import { PlannerModal } from './PlannerModal';
 import { ProgressDial } from './ProgressDial';
 import { RecordScreen } from './RecordScreen';
 import { TaskComposer } from './TaskComposer';
@@ -84,15 +83,21 @@ export function HomeScreen({
   const [archiveVisible, setArchiveVisible] = useState(false);
   const [focusHistoryVisible, setFocusHistoryVisible] = useState(false);
   const [motivationVisible, setMotivationVisible] = useState(false);
+  const [plannerVisible, setPlannerVisible] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<Task | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [todayKey, setTodayKey] = useState(getLocalDateKey());
   const [selectedDate, setSelectedDate] = useState(todayKey);
-  const dayOptions = useMemo(
-    () => getUpcomingDays(10, new Date(`${todayKey}T12:00:00`)),
-    [todayKey],
-  );
   const isTodayView = selectedDate === todayKey;
+  const selectedDateLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat('zh-CN', {
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long',
+      }).format(new Date(`${selectedDate}T12:00:00`)),
+    [selectedDate],
+  );
   const todayTasks = taskState.tasks.filter(
     (task) =>
       task.category === 'today' &&
@@ -166,18 +171,13 @@ export function HomeScreen({
   const allPendingCount = taskState.tasks.filter(
     (task) => !task.isCompleted && task.scheduledDate <= todayKey,
   ).length;
-  const dateCounts = Object.fromEntries(
-    dayOptions.map((day) => [
-      day.key,
-      taskState.tasks.filter(
-        (task) =>
-          !task.isCompleted &&
-          (day.key === todayKey
-            ? task.scheduledDate <= todayKey
-            : task.scheduledDate === day.key),
-      ).length,
-    ]),
-  );
+  const selectedDateCount = taskState.tasks.filter(
+    (task) =>
+      !task.isCompleted &&
+      (isTodayView
+        ? task.scheduledDate <= todayKey
+        : task.scheduledDate === selectedDate),
+  ).length;
 
   function confirmDelete(task: Task) {
     setDeleteCandidate(task);
@@ -285,10 +285,10 @@ export function HomeScreen({
   }, []);
 
   useEffect(() => {
-    if (!dayOptions.some((day) => day.key === selectedDate)) {
+    if (selectedDate < todayKey) {
       setSelectedDate(todayKey);
     }
-  }, [dayOptions, selectedDate, todayKey]);
+  }, [selectedDate, todayKey]);
 
   const listHeader = (
     <View>
@@ -387,10 +387,7 @@ export function HomeScreen({
           <View style={styles.reflectionCopy}>
             <Text style={styles.reflectionEyebrow}>
               {activeCategory === 'today'
-                ? `朝计 · ${
-                    dayOptions.find((day) => day.key === selectedDate)
-                      ?.shortDate ?? ''
-                  }`
+                ? `朝计 · ${selectedDateLabel}`
                 : '遐筹 · LONG VIEW'}
             </Text>
             <Text style={styles.reflectionTitle}>
@@ -460,15 +457,30 @@ export function HomeScreen({
         })}
       </View>
 
-      <DateRail
-        days={dayOptions}
-        selectedDate={selectedDate}
-        counts={dateCounts}
-        onSelect={(date) => {
-          setSelectedDate(date);
-          setShowCompleted(false);
-        }}
-      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="打开日历"
+        onPress={() => setPlannerVisible(true)}
+        style={({ pressed }) => [
+          styles.calendarButton,
+          pressed && styles.toolPressed,
+        ]}
+      >
+        <View style={styles.calendarIcon}>
+          <Ionicons name="calendar-outline" size={18} color={colors.ink} />
+        </View>
+        <View style={styles.calendarCopy}>
+          <Text style={styles.calendarTitle}>
+            {isTodayView ? 'Today' : selectedDateLabel}
+          </Text>
+          <Text style={styles.calendarHint}>
+            {selectedDateCount > 0
+              ? `${selectedDateCount} 项已安排`
+              : '打开日历安排未来'}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
+      </Pressable>
 
       <View style={styles.todoTools}>
         <Ionicons
@@ -517,9 +529,7 @@ export function HomeScreen({
               ? activeCategory === 'today'
                 ? '先完成 Primary，再让其余事情各归其位。'
                 : '让重要而不紧急的事，慢慢生长。'
-              : `${
-                  dayOptions.find((day) => day.key === selectedDate)?.fullLabel
-                } · 提前看见，按时发生。`}
+              : `${selectedDateLabel} · 提前看见，按时发生。`}
           </Text>
         </View>
         <Text style={styles.listCount}>
@@ -872,6 +882,17 @@ export function HomeScreen({
         defaultValue={motivationState.defaultMotivation}
         onClose={() => setMotivationVisible(false)}
         onSave={motivationState.setMotivation}
+      />
+
+      <PlannerModal
+        visible={plannerVisible}
+        selectedDate={selectedDate}
+        tasks={taskState.tasks}
+        onClose={() => setPlannerVisible(false)}
+        onSelect={(date) => {
+          setSelectedDate(date);
+          setShowCompleted(false);
+        }}
       />
 
       <ConfirmDialog
@@ -1240,6 +1261,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 3,
+  },
+  calendarButton: {
+    minHeight: 58,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  calendarIcon: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.surfaceMuted,
+  },
+  calendarCopy: {
+    flex: 1,
+  },
+  calendarTitle: {
+    color: colors.ink,
+    fontFamily: 'serif',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  calendarHint: {
+    marginTop: 3,
+    color: colors.inkFaint,
+    fontSize: 9,
   },
   saveListButton: {
     flex: 1,

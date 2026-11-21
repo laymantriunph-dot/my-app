@@ -56,7 +56,10 @@ export function TaskComposer({
   const [category, setCategory] = useState<TaskCategory>(initialCategory);
   const [priority, setPriority] = useState<TaskPriority>('primary');
   const [scheduledDate, setScheduledDate] = useState(initialDate);
-  const dayOptions = getUpcomingDays(10);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const dayOptions = getUpcomingDays(30);
+  const selectedDay =
+    dayOptions.find((day) => day.key === scheduledDate) ?? dayOptions[0];
 
   useEffect(() => {
     if (visible) {
@@ -64,6 +67,7 @@ export function TaskComposer({
       setCategory(initialCategory);
       setPriority('primary');
       setScheduledDate(initialDate);
+      setShowDatePicker(false);
     }
   }, [initialCategory, initialDate, visible]);
 
@@ -219,45 +223,77 @@ export function TaskComposer({
                 到这一天才会进入清单与进度
               </Text>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.dayRail}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setShowDatePicker((current) => !current)}
+              style={styles.scheduleButton}
             >
-              {dayOptions.map((day) => {
-                const selected = day.key === scheduledDate;
+              <View style={styles.scheduleButtonIcon}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={18}
+                  color={colors.longTerm}
+                />
+              </View>
+              <View style={styles.scheduleButtonCopy}>
+                <Text style={styles.scheduleButtonTitle}>
+                  {selectedDay.label} · {selectedDay.shortDate}
+                </Text>
+                <Text style={styles.scheduleButtonHint}>
+                  点击修改安排日期
+                </Text>
+              </View>
+              <Ionicons
+                name={showDatePicker ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={colors.inkFaint}
+              />
+            </Pressable>
 
-                return (
-                  <Pressable
-                    key={day.key}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    onPress={() => setScheduledDate(day.key)}
-                    style={[
-                      styles.dayButton,
-                      selected && styles.dayButtonSelected,
-                    ]}
-                  >
-                    <Text
+            {showDatePicker ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.dayRail}
+              >
+                {dayOptions.map((day) => {
+                  const selected = day.key === scheduledDate;
+
+                  return (
+                    <Pressable
+                      key={day.key}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      onPress={() => {
+                        setScheduledDate(day.key);
+                        setShowDatePicker(false);
+                      }}
                       style={[
-                        styles.dayLabel,
-                        selected && styles.dayLabelSelected,
+                        styles.dayButton,
+                        selected && styles.dayButtonSelected,
                       ]}
                     >
-                      {day.label}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.dayDate,
-                        selected && styles.dayDateSelected,
-                      ]}
-                    >
-                      {day.shortDate}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+                      <Text
+                        style={[
+                          styles.dayLabel,
+                          selected && styles.dayLabelSelected,
+                        ]}
+                      >
+                        {day.label}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.dayDate,
+                          selected && styles.dayDateSelected,
+                        ]}
+                      >
+                        {day.shortDate}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            ) : null}
           </View>
 
           <Pressable
@@ -422,6 +458,37 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   scheduleHint: {
+    color: colors.inkFaint,
+    fontSize: 8,
+  },
+  scheduleButton: {
+    minHeight: 54,
+    marginTop: 8,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    borderRadius: 13,
+    backgroundColor: colors.surfaceMuted,
+  },
+  scheduleButtonIcon: {
+    width: 31,
+    height: 31,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+  },
+  scheduleButtonCopy: {
+    flex: 1,
+  },
+  scheduleButtonTitle: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  scheduleButtonHint: {
+    marginTop: 3,
     color: colors.inkFaint,
     fontSize: 8,
   },

@@ -254,6 +254,11 @@ export function HomeScreen({
     let success = true;
 
     for (const task of tasks) {
+      if (taskState.tasks.some((item) => item.id === task.id)) {
+        const removedTask = await taskState.removeTask(task);
+        if (!removedTask) success = false;
+      }
+
       if (!task.completedAt) {
         success = false;
         continue;

@@ -288,6 +288,7 @@ export function TaskComposer({
         visible={showDatePicker}
         selectedDate={scheduledDate}
         tasks={[]}
+        mode="picker"
         onClose={() => setShowDatePicker(false)}
         onSelect={setScheduledDate}
       />

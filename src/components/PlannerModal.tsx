@@ -20,6 +20,7 @@ type PlannerModalProps = {
   tasks: Task[];
   onClose: () => void;
   onSelect: (date: string) => void;
+  mode?: 'planner' | 'picker';
 };
 
 const weekdayLabels = ['一', '二', '三', '四', '五', '六', '日'];
@@ -38,6 +39,7 @@ export function PlannerModal({
   tasks,
   onClose,
   onSelect,
+  mode = 'planner',
 }: PlannerModalProps) {
   const insets = useSafeAreaInsets();
   const selected = new Date(`${selectedDate}T12:00:00`);
@@ -118,8 +120,12 @@ export function PlannerModal({
           >
           <View style={styles.header}>
             <View>
-              <Text style={styles.eyebrow}>DATE PICKER</Text>
-              <Text style={styles.title}>选择日期</Text>
+              <Text style={styles.eyebrow}>
+                {mode === 'picker' ? 'DATE PICKER' : 'FUTURE WINDOW'}
+              </Text>
+              <Text style={styles.title}>
+                {mode === 'picker' ? '选择日期' : '计划未来'}
+              </Text>
             </View>
             <Pressable
               accessibilityRole="button"
@@ -132,7 +138,9 @@ export function PlannerModal({
           </View>
 
           <Text style={styles.hint}>
-            选择后会打开这一天的临时待办窗口，主页仍然停留在今天。
+            {mode === 'picker'
+              ? '选择任务要出现的日期，过去日期不可选。'
+              : '选择后会打开这一天的临时待办窗口，主页仍然停留在今天。'}
           </Text>
 
           <View style={styles.monthHeader}>

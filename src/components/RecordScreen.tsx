@@ -394,7 +394,7 @@ export function RecordScreen({
       </View>
 
       <LinearGradient
-        colors={['#263B31', '#3B6553']}
+        colors={['#314A3E', '#607B6C']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.timerCard}
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   modeButtonActive: {
-    backgroundColor: '#F1EEE5',
+    backgroundColor: '#F6F2E9',
   },
   modeText: {
     color: '#C8D9D1',
@@ -1015,7 +1015,7 @@ const styles = StyleSheet.create({
   },
   timerState: {
     marginTop: 5,
-    color: '#BDD1C8',
+    color: '#C7D8CE',
     fontSize: 11,
   },
   timerAccent: {
@@ -1040,7 +1040,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7,
     borderRadius: 17,
-    backgroundColor: '#F3EEE2',
+    backgroundColor: '#F5F1E8',
   },
   primaryButtonText: {
     color: colors.ink,
@@ -1565,7 +1565,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     justifyContent: 'space-between',
-    backgroundColor: '#14291F',
+    backgroundColor: '#21362C',
   },
   immersiveTopBar: {
     flexDirection: 'row',
@@ -1632,7 +1632,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.025)',
   },
   immersiveTimer: {
-    color: '#F4F0E5',
+    color: '#FAF7F0',
     fontSize: 66,
     lineHeight: 74,
     fontWeight: '200',
@@ -1677,7 +1677,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderRadius: 18,
-    backgroundColor: '#EEE8D9',
+    backgroundColor: '#F1EBDD',
   },
   immersiveFinishText: {
     color: colors.ink,

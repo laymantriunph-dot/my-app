@@ -31,8 +31,8 @@ export function ProgressDial({
       <Svg width={size} height={size}>
         <Defs>
           <LinearGradient id="progressStroke" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#E7DDC8" />
-            <Stop offset="1" stopColor="#B9C8C9" />
+            <Stop offset="0" stopColor="#EDE3D0" />
+            <Stop offset="1" stopColor="#C5D3CA" />
           </LinearGradient>
         </Defs>
 
@@ -49,7 +49,7 @@ export function ProgressDial({
               y1={center + Math.sin(angle) * inner}
               x2={center + Math.cos(angle) * outer}
               y2={center + Math.sin(angle) * outer}
-              stroke={active ? '#E7DDC8' : '#FFFFFF'}
+              stroke={active ? '#EDE3D0' : '#FFFFFF'}
               strokeWidth={1.4}
               strokeLinecap="round"
               opacity={active ? 0.88 : 0.12}
@@ -83,7 +83,7 @@ export function ProgressDial({
           cx={endpointX}
           cy={endpointY}
           r={4.5}
-          fill="#F5ECD9"
+          fill="#F2E8D5"
         />
       </Svg>
       <View style={styles.center}>
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   percentage: {
-    color: '#FFF9ED',
+    color: '#FFFDF7',
     fontSize: 34,
     lineHeight: 38,
     fontWeight: '300',
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   percentSign: {
     marginTop: -8,
     marginLeft: 2,
-    color: '#D5DDDB',
+    color: '#DDE7E1',
     fontSize: 12,
     fontWeight: '700',
   },

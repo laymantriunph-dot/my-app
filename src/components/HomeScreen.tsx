@@ -292,7 +292,7 @@ export function HomeScreen({
           ]}
         >
           <View style={styles.successIcon}>
-            <Ionicons name="trophy-outline" size={18} color="#F7E5BC" />
+            <Ionicons name="trophy-outline" size={18} color="#F2E6CD" />
           </View>
           <View style={styles.successCopy}>
             <Text style={styles.successTitle}>Accomplished</Text>
@@ -301,7 +301,7 @@ export function HomeScreen({
             <Text style={styles.successCountText}>
               {archiveState.archives.length}
             </Text>
-            <Ionicons name="chevron-forward" size={15} color="#D9C590" />
+            <Ionicons name="chevron-forward" size={15} color="#D9CEB6" />
           </View>
         </Pressable>
 
@@ -369,6 +369,10 @@ export function HomeScreen({
               }}
               style={({ pressed }) => [
                 styles.categoryCard,
+                {
+                  backgroundColor: isActive ? meta.softColor : colors.surface,
+                  borderColor: isActive ? meta.color : colors.line,
+                },
                 isActive
                   ? styles.categoryCardActive
                   : styles.categoryCardIdle,
@@ -381,7 +385,7 @@ export function HomeScreen({
                     styles.categoryIcon,
                     {
                       backgroundColor: isActive
-                        ? 'rgba(255,255,255,0.1)'
+                        ? meta.color
                         : meta.softColor,
                     },
                   ]}
@@ -397,7 +401,7 @@ export function HomeScreen({
                     styles.categoryBadge,
                     {
                       backgroundColor: isActive
-                        ? 'rgba(255,255,255,0.12)'
+                        ? colors.surface
                         : meta.softColor,
                     },
                   ]}
@@ -405,7 +409,7 @@ export function HomeScreen({
                   <Text
                     style={[
                       styles.categoryBadgeText,
-                      { color: isActive ? colors.white : meta.color },
+                      { color: meta.color },
                     ]}
                   >
                     {categoryStats.remaining > 99
@@ -418,7 +422,7 @@ export function HomeScreen({
                 <Text
                   style={[
                     styles.categoryName,
-                    { color: isActive ? colors.white : colors.ink },
+                    { color: isActive ? meta.color : colors.ink },
                   ]}
                 >
                   {meta.label}
@@ -428,7 +432,7 @@ export function HomeScreen({
                     styles.categoryEyebrow,
                     {
                       color: isActive
-                        ? 'rgba(255,255,255,0.58)'
+                        ? meta.color
                         : colors.inkFaint,
                     },
                   ]}
@@ -443,7 +447,7 @@ export function HomeScreen({
 
       {activeCategory === 'today' ? (
         <LinearGradient
-          colors={['#354950', '#52666B']}
+          colors={['#405A4D', '#6A8376']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.progressCard}
@@ -463,7 +467,7 @@ export function HomeScreen({
             <Ionicons
               name="infinite-outline"
               size={22}
-              color="#E8E0CB"
+              color="#EDE3CD"
             />
           </View>
           <View style={styles.reflectionCopy}>
@@ -991,7 +995,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.ink,
+    backgroundColor: colors.longTerm,
   },
   miniMarkText: {
     color: colors.white,
@@ -1091,7 +1095,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   progressEyebrow: {
-    color: '#D2DCDD',
+    color: '#DCE8E1',
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 1.7,
@@ -1099,7 +1103,7 @@ const styles = StyleSheet.create({
   progressStatement: {
     marginTop: 12,
     maxWidth: 170,
-    color: '#FFF9ED',
+    color: '#FFFDF8',
     fontFamily: 'serif',
     fontSize: 23,
     lineHeight: 31,
@@ -1126,7 +1130,7 @@ const styles = StyleSheet.create({
   },
   progressCaption: {
     marginTop: 1,
-    color: '#C9DCD3',
+    color: '#D3E1D9',
     fontSize: 12,
   },
   progressVisual: {
@@ -1213,7 +1217,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 13,
     borderRadius: radii.lg,
-    backgroundColor: '#29332F',
+    backgroundColor: '#3A5147',
     overflow: 'hidden',
     ...shadows.card,
   },
@@ -1229,21 +1233,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reflectionEyebrow: {
-    color: '#BEB6A0',
+    color: '#CFC7B4',
     fontSize: 8,
     fontWeight: '800',
     letterSpacing: 1.4,
   },
   reflectionTitle: {
     marginTop: 7,
-    color: '#F2EDE1',
+    color: '#F7F3EB',
     fontSize: 17,
     lineHeight: 24,
     fontWeight: '700',
   },
   reflectionHint: {
     marginTop: 5,
-    color: '#9FA9A3',
+    color: '#AEBDB5',
     fontSize: 9,
   },
   categoryCards: {
@@ -1259,15 +1263,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
   },
   categoryCardActive: {
-    backgroundColor: colors.ink,
-    borderWidth: 1,
-    borderColor: colors.ink,
+    borderWidth: 1.5,
     ...shadows.card,
   },
   categoryCardIdle: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.line,
   },
   categoryCardPressed: {
     opacity: 0.7,
@@ -1417,7 +1417,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 11,
     borderRadius: radii.md,
-    backgroundColor: '#4B4938',
+    backgroundColor: '#50695D',
     overflow: 'hidden',
   },
   successIcon: {
@@ -1432,7 +1432,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   successTitle: {
-    color: '#FFF7E8',
+    color: '#FFFBF2',
     fontFamily: 'serif',
     fontSize: 15,
     fontWeight: '800',
@@ -1440,7 +1440,7 @@ const styles = StyleSheet.create({
   },
   successHint: {
     marginTop: 3,
-    color: '#C8C1AB',
+    color: '#D4DCD6',
     fontSize: 9,
   },
   successCount: {
@@ -1449,7 +1449,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   successCountText: {
-    color: '#F7E5BC',
+    color: '#F2E6CD',
     fontSize: 15,
     fontWeight: '800',
   },
@@ -1646,7 +1646,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: colors.line,
-    backgroundColor: 'rgba(255,252,246,0.45)',
+    backgroundColor: 'rgba(254,254,252,0.62)',
   },
   emptyIcon: {
     width: 58,
@@ -1708,7 +1708,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    backgroundColor: '#FCF8F0',
+    backgroundColor: '#FBFCF9',
   },
   navItem: {
     minWidth: 86,
@@ -1737,7 +1737,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.accent,
     borderWidth: 1.5,
-    borderColor: '#FCF8F0',
+    borderColor: '#FBFCF9',
   },
   navBadgeText: {
     color: colors.white,

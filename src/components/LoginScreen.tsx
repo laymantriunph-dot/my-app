@@ -75,7 +75,7 @@ export function LoginScreen({ auth, onStartLocal }: LoginScreenProps) {
           </View>
 
           <LinearGradient
-            colors={['#243A31', '#385C4C']}
+            colors={['#30483C', '#5A7467']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.previewCard}
@@ -222,8 +222,8 @@ const styles = StyleSheet.create({
     width: 280,
     height: 280,
     borderRadius: 140,
-    backgroundColor: '#E8DAC8',
-    opacity: 0.55,
+    backgroundColor: '#E2E9E2',
+    opacity: 0.7,
   },
   backgroundOrbSmall: {
     position: 'absolute',
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 80,
     backgroundColor: colors.accentSoft,
-    opacity: 0.7,
+    opacity: 0.56,
   },
   content: {
     paddingTop: 18,

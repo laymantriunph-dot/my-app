@@ -2,12 +2,12 @@
   "expo": {
     "name": "三分待办",
     "slug": "sanfen-todo",
-    "version": "2.1.2",
+    "version": "2.2.0",
     "scheme": "sanfen",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#F6F1E8",
+    "backgroundColor": "#F3F5F1",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.laymantriunph.sanfentodo"
@@ -15,7 +15,7 @@
     "android": {
       "package": "com.laymantriunph.sanfentodo",
       "adaptiveIcon": {
-        "backgroundColor": "#F6F1E8",
+        "backgroundColor": "#F3F5F1",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -33,7 +33,7 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#F6F1E8"
+          "backgroundColor": "#F3F5F1"
         }
       ]
     ],

@@ -29,9 +29,9 @@ export function TimerDial({ progress, children }: TimerDialProps) {
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         <Defs>
           <LinearGradient id="timerStroke" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#F2E9D5" />
-            <Stop offset="0.55" stopColor="#C5D3CA" />
-            <Stop offset="1" stopColor="#91AD9C" />
+            <Stop offset="0" stopColor="#F4EAD6" />
+            <Stop offset="0.55" stopColor="#CEDBD3" />
+            <Stop offset="1" stopColor="#9EB7A8" />
           </LinearGradient>
         </Defs>
 
@@ -83,7 +83,7 @@ export function TimerDial({ progress, children }: TimerDialProps) {
           rotation={-90}
           origin={`${center}, ${center}`}
         />
-        <Circle cx={dotX} cy={dotY} r={4.5} fill="#F7EDD8" />
+        <Circle cx={dotX} cy={dotY} r={4.5} fill="#F4EAD7" />
       </Svg>
       <View style={styles.content}>{children}</View>
     </View>

@@ -20,8 +20,6 @@ type PlannerModalProps = {
   tasks: Task[];
   onClose: () => void;
   onSelect: (date: string) => void;
-  onPlanDate?: (date: string) => void;
-  selectionOnly?: boolean;
 };
 
 const weekdayLabels = ['一', '二', '三', '四', '五', '六', '日'];
@@ -40,8 +38,6 @@ export function PlannerModal({
   tasks,
   onClose,
   onSelect,
-  onPlanDate,
-  selectionOnly = false,
 }: PlannerModalProps) {
   const insets = useSafeAreaInsets();
   const selected = new Date(`${selectedDate}T12:00:00`);
@@ -87,13 +83,6 @@ export function PlannerModal({
 
     return counts;
   }, [tasks, todayKey]);
-  const selectedTasks = tasks.filter(
-    (task) =>
-      !task.isCompleted &&
-      (selectedDate === todayKey
-        ? task.scheduledDate <= todayKey
-        : task.scheduledDate === selectedDate),
-  );
 
   function changeMonth(offset: number) {
     setViewMonth(
@@ -129,12 +118,8 @@ export function PlannerModal({
           >
           <View style={styles.header}>
             <View>
-              <Text style={styles.eyebrow}>
-                {selectionOnly ? 'DATE PICKER' : 'FUTURE WINDOW'}
-              </Text>
-              <Text style={styles.title}>
-                {selectionOnly ? '选择日期' : '计划未来'}
-              </Text>
+              <Text style={styles.eyebrow}>DATE PICKER</Text>
+              <Text style={styles.title}>选择日期</Text>
             </View>
             <Pressable
               accessibilityRole="button"
@@ -147,9 +132,7 @@ export function PlannerModal({
           </View>
 
           <Text style={styles.hint}>
-            {selectionOnly
-              ? '选择任务要出现的日期。所有过去日期不可选。'
-              : '这里只预览未来计划，不会改变主页面正在显示的今天。'}
+            选择后会打开这一天的临时待办窗口，主页仍然停留在今天。
           </Text>
 
           <View style={styles.monthHeader}>
@@ -205,7 +188,7 @@ export function PlannerModal({
                     disabled={isPast}
                     onPress={() => {
                       onSelect(key);
-                      if (selectionOnly) onClose();
+                      onClose();
                     }}
                     style={[
                       styles.dayCell,
@@ -246,76 +229,11 @@ export function PlannerModal({
             })}
           </View>
 
-          {!selectionOnly ? (
-            <View style={styles.selectedSummary}>
-            <View>
-              <Text style={styles.selectedLabel}>SELECTED DAY</Text>
-              <Text style={styles.selectedTitle}>
-                {selectedDate === todayKey
-                  ? '今天'
-                  : new Intl.DateTimeFormat('zh-CN', {
-                      month: 'long',
-                      day: 'numeric',
-                      weekday: 'long',
-                    }).format(selected)}
-              </Text>
-            </View>
-            <Text style={styles.selectedCount}>
-              {selectedTasks.length} 项计划
-            </Text>
-            </View>
-          ) : null}
-
-          {!selectionOnly && selectedTasks.length > 0 ? (
-            <ScrollView
-              style={styles.previewList}
-              contentContainerStyle={styles.previewContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {selectedTasks.slice(0, 5).map((task) => (
-                <View key={task.id} style={styles.previewTask}>
-                  <View
-                    style={[
-                      styles.previewDot,
-                      {
-                        backgroundColor:
-                          task.category === 'today'
-                            ? colors.accent
-                            : colors.longTerm,
-                      },
-                    ]}
-                  />
-                  <Text numberOfLines={1} style={styles.previewTitle}>
-                    {task.title}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          ) : null}
-
-          {!selectionOnly ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                onPlanDate?.(selectedDate);
-                onClose();
-              }}
-              style={styles.planButton}
-            >
-              <Ionicons name="create-outline" size={17} color={colors.white} />
-              <Text style={styles.planButtonText}>
-                {selectedDate === todayKey
-                  ? '在今天添加任务'
-                  : '为这一天添加任务'}
-              </Text>
-            </Pressable>
-          ) : null}
-
           <Pressable
             accessibilityRole="button"
             onPress={() => {
               onSelect(todayKey);
-              if (selectionOnly) onClose();
+              onClose();
             }}
             style={styles.todayButton}
           >

@@ -40,6 +40,7 @@ import {
 } from '../types';
 import { ArchiveModal } from './ArchiveModal';
 import { ConfirmDialog } from './ConfirmDialog';
+import { DayPreviewModal } from './DayPreviewModal';
 import { FocusHistoryModal } from './FocusHistoryModal';
 import { MotivationModal } from './MotivationModal';
 import { PlannerModal } from './PlannerModal';
@@ -84,6 +85,7 @@ export function HomeScreen({
   const [focusHistoryVisible, setFocusHistoryVisible] = useState(false);
   const [motivationVisible, setMotivationVisible] = useState(false);
   const [plannerVisible, setPlannerVisible] = useState(false);
+  const [dayPreviewVisible, setDayPreviewVisible] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<Task | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [todayKey, setTodayKey] = useState(getLocalDateKey());
@@ -853,10 +855,20 @@ export function HomeScreen({
         selectedDate={planningDate}
         tasks={taskState.tasks}
         onClose={() => setPlannerVisible(false)}
-        onSelect={setPlanningDate}
-        onPlanDate={(date) => {
-          openComposer(date);
-          setPlannerVisible(false);
+        onSelect={(date) => {
+          setPlanningDate(date);
+          setDayPreviewVisible(true);
+        }}
+      />
+
+      <DayPreviewModal
+        visible={dayPreviewVisible}
+        date={planningDate}
+        tasks={taskState.tasks}
+        onClose={() => setDayPreviewVisible(false)}
+        onAddTask={() => {
+          setDayPreviewVisible(false);
+          openComposer(planningDate);
         }}
       />
 

@@ -345,6 +345,102 @@ export function HomeScreen({
         </Text>
       </View>
 
+      <View style={styles.categoryCards}>
+        {ACTIVE_TASK_CATEGORIES.map((key) => {
+          const meta = CATEGORY_META[key];
+          const categoryTasks = taskState.tasks.filter(
+            (task) =>
+              task.category === key &&
+              !task.isCompleted &&
+              (key === 'longTerm' || task.scheduledDate <= todayKey),
+          );
+          const categoryStats = getTaskStats(categoryTasks);
+          const isActive = activeCategory === key;
+
+          return (
+            <Pressable
+              key={key}
+              accessibilityRole="tab"
+              accessibilityLabel={`${meta.label}，${categoryStats.remaining}项待办`}
+              accessibilityState={{ selected: isActive }}
+              onPress={() => {
+                setActiveCategory(key);
+                setShowCompleted(false);
+              }}
+              style={({ pressed }) => [
+                styles.categoryCard,
+                isActive
+                  ? styles.categoryCardActive
+                  : styles.categoryCardIdle,
+                pressed && styles.categoryCardPressed,
+              ]}
+            >
+              <View style={styles.categoryTop}>
+                <View
+                  style={[
+                    styles.categoryIcon,
+                    {
+                      backgroundColor: isActive
+                        ? 'rgba(255,255,255,0.1)'
+                        : meta.softColor,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={meta.icon}
+                    size={21}
+                    color={isActive ? colors.white : meta.color}
+                  />
+                </View>
+                <View
+                  style={[
+                    styles.categoryBadge,
+                    {
+                      backgroundColor: isActive
+                        ? 'rgba(255,255,255,0.12)'
+                        : meta.softColor,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.categoryBadgeText,
+                      { color: isActive ? colors.white : meta.color },
+                    ]}
+                  >
+                    {categoryStats.remaining > 99
+                      ? '99+'
+                      : categoryStats.remaining}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.categoryCopy}>
+                <Text
+                  style={[
+                    styles.categoryName,
+                    { color: isActive ? colors.white : colors.ink },
+                  ]}
+                >
+                  {meta.label}
+                </Text>
+                <Text
+                  style={[
+                    styles.categoryEyebrow,
+                    {
+                      color: isActive
+                        ? 'rgba(255,255,255,0.58)'
+                        : colors.inkFaint,
+                    },
+                  ]}
+                >
+                  {key === 'today' ? 'TODAY' : 'LONG VIEW'}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {activeCategory === 'today' ? (
         <LinearGradient
           colors={['#354950', '#52666B']}
@@ -378,63 +474,11 @@ export function HomeScreen({
               把重要的事，放在长期视野里。
             </Text>
             <Text style={styles.reflectionHint}>
-              {pendingTasks.length} 个长期提醒 · 不计入今日完成率
+              持续推进 · 不计入今日完成率
             </Text>
           </View>
         </View>
       )}
-
-      <View style={styles.categoryCards}>
-        {ACTIVE_TASK_CATEGORIES.map((key) => {
-          const meta = CATEGORY_META[key];
-          const categoryTasks = taskState.tasks.filter(
-            (task) =>
-              task.category === key &&
-              !task.isCompleted &&
-              (key === 'longTerm' || task.scheduledDate <= todayKey),
-          );
-          const categoryStats = getTaskStats(categoryTasks);
-          const isActive = activeCategory === key;
-
-          return (
-            <Pressable
-              key={key}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-              onPress={() => {
-                setActiveCategory(key);
-                setShowCompleted(false);
-              }}
-              style={({ pressed }) => [
-                styles.categoryCard,
-                {
-                  backgroundColor: isActive ? meta.softColor : colors.surface,
-                  borderColor: isActive ? meta.color : colors.line,
-                },
-                pressed && styles.categoryCardPressed,
-              ]}
-            >
-              <View style={styles.categoryTop}>
-                <View
-                  style={[
-                    styles.categoryIcon,
-                    { backgroundColor: meta.softColor },
-                  ]}
-                >
-                  <Ionicons name={meta.icon} size={17} color={meta.color} />
-                </View>
-                <Text style={[styles.categoryName, { color: meta.color }]}>
-                  {meta.label}
-                </Text>
-              </View>
-              <Text style={styles.categoryCount}>
-                {categoryStats.remaining} 项
-                {key === 'longTerm' ? '提醒' : '待办'}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
 
       {activeCategory === 'today' ? (
         <Pressable
@@ -995,7 +1039,7 @@ const styles = StyleSheet.create({
   },
   greetingBlock: {
     marginTop: 27,
-    marginBottom: 21,
+    marginBottom: 17,
   },
   dateLabel: {
     color: colors.accent,
@@ -1204,46 +1248,72 @@ const styles = StyleSheet.create({
   },
   categoryCards: {
     flexDirection: 'row',
-    gap: 9,
-    marginTop: 14,
+    gap: 10,
+    marginBottom: 13,
   },
   categoryCard: {
     flex: 1,
-    minHeight: 78,
-    padding: 12,
+    minHeight: 104,
+    padding: 14,
     justifyContent: 'space-between',
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
+  },
+  categoryCardActive: {
+    backgroundColor: colors.ink,
     borderWidth: 1,
+    borderColor: colors.ink,
+    ...shadows.card,
+  },
+  categoryCardIdle: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   categoryCardPressed: {
     opacity: 0.7,
   },
   categoryIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 11,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   categoryTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+  },
+  categoryBadge: {
+    minWidth: 38,
+    height: 36,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 13,
+  },
+  categoryBadgeText: {
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+  },
+  categoryCopy: {
+    marginTop: 11,
   },
   categoryName: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontFamily: 'serif',
+    fontSize: 21,
+    lineHeight: 26,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  categoryCount: {
-    marginTop: 4,
-    color: colors.ink,
-    fontSize: 15,
+  categoryEyebrow: {
+    marginTop: 2,
+    fontSize: 8,
+    lineHeight: 11,
     fontWeight: '800',
-  },
-  categoryCountMuted: {
-    color: colors.inkFaint,
-    fontSize: 10,
-    fontWeight: '500',
+    letterSpacing: 1.4,
   },
   todoTools: {
     marginTop: 14,

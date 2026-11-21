@@ -119,13 +119,13 @@ export function TaskItem({
 
 const styles = StyleSheet.create({
   container: {
-    minHeight: 82,
+    minHeight: 64,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 13,
-    paddingVertical: 14,
-    paddingHorizontal: 15,
-    borderRadius: radii.md,
+    gap: 11,
+    paddingVertical: 9,
+    paddingHorizontal: 13,
+    borderRadius: 15,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
@@ -134,25 +134,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,252,246,0.56)',
   },
   checkButton: {
-    width: 27,
-    height: 27,
-    borderRadius: 9,
+    width: 24,
+    height: 24,
+    borderRadius: 8,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   content: {
     flex: 1,
-    gap: 7,
+    gap: 4,
   },
   contentOnly: {
     gap: 0,
   },
   title: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    lineHeight: 21,
+    lineHeight: 19,
   },
   completedTitle: {
     color: colors.inkFaint,
@@ -170,25 +170,25 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     color: colors.inkSoft,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
   metaDivider: {
     color: colors.inkFaint,
-    fontSize: 11,
+    fontSize: 10,
   },
   categoryHint: {
     color: colors.inkFaint,
-    fontSize: 11,
+    fontSize: 10,
   },
   creationTime: {
     color: colors.inkFaint,
-    fontSize: 10,
+    fontSize: 9,
   },
   deleteButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },

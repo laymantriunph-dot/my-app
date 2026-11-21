@@ -13,6 +13,7 @@ import {
   CATEGORY_META,
   getLocalDateKey,
   PRIORITY_META,
+  sortTasks,
 } from '../taskUtils';
 import { colors, radii, shadows } from '../theme';
 import type { Task } from '../types';
@@ -40,13 +41,15 @@ export function DayPreviewModal({
     day: 'numeric',
     weekday: 'long',
   }).format(new Date(`${date}T12:00:00`));
-  const dayTasks = tasks.filter(
-    (task) =>
-      task.category === 'today' &&
-      !task.isCompleted &&
-      (isToday
-        ? task.scheduledDate <= todayKey
-        : task.scheduledDate === date),
+  const dayTasks = sortTasks(
+    tasks.filter(
+      (task) =>
+        task.category === 'today' &&
+        !task.isCompleted &&
+        (isToday
+          ? task.scheduledDate <= todayKey
+          : task.scheduledDate === date),
+    ),
   );
 
   return (

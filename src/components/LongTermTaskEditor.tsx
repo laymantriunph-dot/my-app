@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   normalizeLongTermCategory,
-  normalizeTaskTags,
 } from '../taskUtils';
 import { colors, radii, shadows } from '../theme';
 import type { Task } from '../types';
@@ -31,7 +30,6 @@ type LongTermTaskEditorProps = {
   onSave: (
     task: Task,
     category: string | null,
-    tags: string[],
   ) => Promise<boolean>;
 };
 
@@ -46,35 +44,17 @@ export function LongTermTaskEditor({
 }: LongTermTaskEditorProps) {
   const insets = useSafeAreaInsets();
   const [category, setCategory] = useState('');
-  const [tagDraft, setTagDraft] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
 
   useEffect(() => {
     if (!visible || !task) return;
     setCategory(task.customCategory ?? '');
-    setTagDraft('');
-    setTags(task.tags);
   }, [task, visible]);
-
-  function appendTags() {
-    const nextTags = normalizeTaskTags([
-      ...tags,
-      ...tagDraft.split(/[,，、\s]+/).filter(Boolean),
-    ]);
-    setTags(nextTags);
-    setTagDraft('');
-  }
 
   async function save() {
     if (!task) return;
-    const submittedTags = normalizeTaskTags([
-      ...tags,
-      ...tagDraft.split(/[,，、\s]+/).filter(Boolean),
-    ]);
     const saved = await onSave(
       task,
       normalizeLongTermCategory(category),
-      submittedTags,
     );
     if (saved) onClose();
   }
@@ -104,7 +84,7 @@ export function LongTermTaskEditor({
             <View style={styles.headingRow}>
               <View style={styles.headingCopy}>
                 <Text style={styles.eyebrow}>EDIT LONG VIEW</Text>
-                <Text style={styles.title}>编辑分类与标签</Text>
+                <Text style={styles.title}>编辑遐筹分类</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -181,55 +161,9 @@ export function LongTermTaskEditor({
               </View>
             ) : null}
 
-            <View style={styles.tagHeading}>
-              <Text style={styles.sectionLabel}>标签</Text>
-              <Text style={styles.tagLimit}>最多 8 个</Text>
-            </View>
-            <View style={styles.tagInputRow}>
-              <TextInput
-                value={tagDraft}
-                onChangeText={setTagDraft}
-                placeholder="输入标签后点击右侧添加"
-                placeholderTextColor={colors.inkFaint}
-                maxLength={60}
-                returnKeyType="done"
-                onSubmitEditing={appendTags}
-                style={styles.tagInput}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="添加标签"
-                disabled={!tagDraft.trim() || tags.length >= 8}
-                onPress={appendTags}
-                style={[
-                  styles.addTagButton,
-                  (!tagDraft.trim() || tags.length >= 8) &&
-                    styles.addTagButtonDisabled,
-                ]}
-              >
-                <Ionicons name="add" size={20} color={colors.white} />
-              </Pressable>
-            </View>
-            {tags.length > 0 ? (
-              <View style={styles.tagList}>
-                {tags.map((tag) => (
-                  <Pressable
-                    key={tag}
-                    accessibilityRole="button"
-                    accessibilityLabel={`移除标签 ${tag}`}
-                    onPress={() =>
-                      setTags((current) =>
-                        current.filter((item) => item !== tag),
-                      )
-                    }
-                    style={styles.tagChip}
-                  >
-                    <Text style={styles.tagChipText}>#{tag}</Text>
-                    <Ionicons name="close" size={12} color={colors.accent} />
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
+            <Text style={styles.helper}>
+              分类用于整理长期事项，不会影响今日完成率。
+            </Text>
 
             <Pressable
               accessibilityRole="button"
@@ -399,62 +333,11 @@ const styles = StyleSheet.create({
   suggestionTextActive: {
     color: colors.white,
   },
-  tagHeading: {
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  tagLimit: {
+  helper: {
+    marginTop: 12,
     color: colors.inkFaint,
     fontSize: 9,
-  },
-  tagInputRow: {
-    marginTop: 8,
-    flexDirection: 'row',
-    gap: 7,
-  },
-  tagInput: {
-    flex: 1,
-    height: 44,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
-    color: colors.ink,
-    fontSize: 12,
-  },
-  addTagButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: colors.longTerm,
-  },
-  addTagButtonDisabled: {
-    opacity: 0.3,
-  },
-  tagList: {
-    marginTop: 9,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  tagChip: {
-    minHeight: 29,
-    paddingHorizontal: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderRadius: radii.pill,
-    backgroundColor: colors.accentSoft,
-  },
-  tagChipText: {
-    color: colors.accent,
-    fontSize: 9,
-    fontWeight: '700',
+    lineHeight: 14,
   },
   saveButton: {
     height: 54,

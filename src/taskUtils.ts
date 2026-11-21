@@ -161,6 +161,10 @@ export function sortTasks(tasks: Task[]): Task[] {
       return left.isCompleted ? 1 : -1;
     }
 
+    if (left.priority !== right.priority) {
+      return left.priority === 'primary' ? -1 : 1;
+    }
+
     return (
       new Date(right.createdAt).getTime() -
       new Date(left.createdAt).getTime()

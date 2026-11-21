@@ -88,7 +88,6 @@ export async function insertRemoteTask(
   priority: TaskPriority,
   scheduledDate: string,
   customCategory: string | null,
-  tags: string[],
 ): Promise<Task> {
   const client = getSupabase();
   const { data, error } = await client
@@ -100,7 +99,7 @@ export async function insertRemoteTask(
       priority,
       scheduled_date: scheduledDate,
       custom_category: customCategory,
-      tags,
+      tags: [],
     })
     .select(
       'id,user_id,title,category,priority,scheduled_date,custom_category,tags,is_completed,created_at,completed_at,updated_at',

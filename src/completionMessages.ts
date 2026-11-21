@@ -1,0 +1,37 @@
+export const COMPLETION_MESSAGES = [
+  'One task done one dream closer.',
+  '此章暂毕 前路渐近',
+  'Step completed path unfolds.',
+  '一桩落定 山遥渐近',
+  'Mark this down move onward.',
+  '寸功已积 向愿而行',
+  'A small win toward your aim.',
+  '轻收一事 赴往下程',
+  'This chapter closes next awaits.',
+  '跬步既至 远方渐明',
+  'Progress made gently forward.',
+  '心事减一 期许近寸',
+  'Another mile closer to light.',
+  '笔落事歇 微光又聚',
+  'Task settled hope draws near.',
+  '一程收束 慢慢向前',
+  'Tiny stride grand pursuit.',
+  '耕耘有迹 终抵所期',
+  'Checked off keep wandering.',
+  '一事封卷 远山愈清',
+  'Work wrapped vision clearer.',
+  '步履有痕 理想渐近',
+  'A brick laid tower rises.',
+  '小有所成 静待来日',
+  'Moment achieved journey continues.',
+  '此番告一段落 前路再行',
+  'One knot untied way ahead.',
+  '拾得寸进 不负朝夕',
+  'Earn this step chase onward.',
+  '繁事少一 归途向光',
+  'Today’s fragment toward the goal.',
+] as const;
+
+export function getCompletionMessage(date = new Date()) {
+  return COMPLETION_MESSAGES[date.getDate() - 1];
+}

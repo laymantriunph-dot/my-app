@@ -22,6 +22,7 @@ import { useFocusSessions } from '../hooks/useFocusSessions';
 import { useLongTermCategoryDefaults } from '../hooks/useLongTermCategoryDefaults';
 import { useMotivation } from '../hooks/useMotivation';
 import { useTaskComposerPreference } from '../hooks/useTaskComposerPreference';
+import { getCompletionMessage } from '../completionMessages';
 import type { TaskState } from '../hooks/useTasks';
 import type { AuthUser } from '../lib/supabase';
 import {
@@ -42,6 +43,7 @@ import {
 } from '../types';
 import { ArchiveModal } from './ArchiveModal';
 import { CategoryDefaultsModal } from './CategoryDefaultsModal';
+import { CompletionToast } from './CompletionToast';
 import { ConfirmDialog } from './ConfirmDialog';
 import { DayPreviewModal } from './DayPreviewModal';
 import { FocusHistoryModal } from './FocusHistoryModal';
@@ -107,9 +109,10 @@ export function HomeScreen({
   const [longTermCategoryFilter, setLongTermCategoryFilter] = useState<
     string | null
   >(null);
-  const [longTermTagFilter, setLongTermTagFilter] = useState<string | null>(
-    null,
-  );
+  const [completionToast, setCompletionToast] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
   const todayTasks = taskState.tasks.filter(
     (task) =>
       task.category === 'today' &&
@@ -130,20 +133,6 @@ export function HomeScreen({
                 task.customCategory,
             )
             .map((task) => task.customCategory as string),
-        ),
-      ).sort((left, right) => left.localeCompare(right, 'zh-CN')),
-    [taskState.tasks],
-  );
-  const longTermTagOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          taskState.tasks
-            .filter(
-              (task) =>
-                task.category === 'longTerm' && !task.isCompleted,
-            )
-            .flatMap((task) => task.tags),
         ),
       ).sort((left, right) => left.localeCompare(right, 'zh-CN')),
     [taskState.tasks],
@@ -170,16 +159,12 @@ export function HomeScreen({
           ) {
             return false;
           }
-          if (longTermTagFilter && !task.tags.includes(longTermTagFilter)) {
-            return false;
-          }
           return !task.isCompleted;
         }),
       ),
     [
       activeCategory,
       longTermCategoryFilter,
-      longTermTagFilter,
       taskState.tasks,
       todayKey,
     ],
@@ -257,7 +242,6 @@ export function HomeScreen({
     priority: TaskPriority,
     scheduledDate: string,
     customCategory: string | null,
-    tags: string[],
   ) {
     const saved = await taskState.addTask(
       title,
@@ -265,14 +249,12 @@ export function HomeScreen({
       priority,
       scheduledDate,
       customCategory,
-      tags,
     );
 
     if (saved) {
       await composerPreference.setPreferredCategory(category);
       if (category === 'longTerm') {
         setLongTermCategoryFilter(null);
-        setLongTermTagFilter(null);
       }
       if (scheduledDate <= todayKey) {
         setActiveCategory(category);
@@ -318,6 +300,10 @@ export function HomeScreen({
         await archiveState.unrecordCompletedTask(task, task.completedAt);
       }
     } else {
+      setCompletionToast({
+        id: Date.now(),
+        message: getCompletionMessage(),
+      });
       await archiveState.recordCompletedTask(task, completedAt);
     }
   }
@@ -556,24 +542,20 @@ export function HomeScreen({
       )}
 
       {activeCategory === 'longTerm' &&
-      (longTermCategoryOptions.length > 0 ||
-        longTermTagOptions.length > 0) ? (
+      longTermCategoryOptions.length > 0 ? (
         <View style={styles.longTermFilters}>
           <View style={styles.longTermFilterHeading}>
             <Text style={styles.longTermFilterTitle}>筛选遐筹</Text>
-            {longTermCategoryFilter || longTermTagFilter ? (
+            {longTermCategoryFilter ? (
               <Pressable
                 accessibilityRole="button"
-                onPress={() => {
-                  setLongTermCategoryFilter(null);
-                  setLongTermTagFilter(null);
-                }}
+                onPress={() => setLongTermCategoryFilter(null)}
                 style={styles.clearFilterButton}
               >
                 <Text style={styles.clearFilterText}>清除</Text>
               </Pressable>
             ) : (
-              <Text style={styles.longTermFilterHint}>分类 + 标签</Text>
+              <Text style={styles.longTermFilterHint}>按分类查看</Text>
             )}
           </View>
           <ScrollView
@@ -584,26 +566,18 @@ export function HomeScreen({
             <Pressable
               accessibilityRole="button"
               accessibilityState={{
-                selected:
-                  longTermCategoryFilter === null &&
-                  longTermTagFilter === null,
+                selected: longTermCategoryFilter === null,
               }}
-              onPress={() => {
-                setLongTermCategoryFilter(null);
-                setLongTermTagFilter(null);
-              }}
+              onPress={() => setLongTermCategoryFilter(null)}
               style={[
                 styles.filterChip,
-                longTermCategoryFilter === null &&
-                  longTermTagFilter === null &&
-                  styles.filterChipAllActive,
+                longTermCategoryFilter === null && styles.filterChipAllActive,
               ]}
             >
               <Text
                 style={[
                   styles.filterChipText,
                   longTermCategoryFilter === null &&
-                    longTermTagFilter === null &&
                     styles.filterChipTextAllActive,
                 ]}
               >
@@ -640,33 +614,6 @@ export function HomeScreen({
                     ]}
                   >
                     {category}
-                  </Text>
-                </Pressable>
-              );
-            })}
-
-            {longTermTagOptions.map((tag) => {
-              const isActive = longTermTagFilter === tag;
-              return (
-                <Pressable
-                  key={`tag:${tag}`}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isActive }}
-                  onPress={() => setLongTermTagFilter(isActive ? null : tag)}
-                  style={[
-                    styles.filterChip,
-                    styles.tagFilterChip,
-                    isActive && styles.tagFilterChipActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      { color: colors.accent },
-                      isActive && styles.filterChipTextActive,
-                    ]}
-                  >
-                    #{tag}
                   </Text>
                 </Pressable>
               );
@@ -729,11 +676,11 @@ export function HomeScreen({
               ? 'Lead the day.'
               : 'Think beyond today.'}
           </Text>
-          <Text style={styles.listDescription}>
-            {activeCategory === 'today'
-              ? '先完成 Primary，再让其余事情各归其位。'
-              : '长期提醒不计入今天，只在需要时提醒你继续向前。'}
-          </Text>
+          {activeCategory === 'today' ? (
+            <Text style={styles.listDescription}>
+              先完成 Primary，再让其余事情各归其位。
+            </Text>
+          ) : null}
         </View>
         <Text style={styles.listCount}>
           {pendingTasks.length} 待办 · {completedTasks.length} 完成
@@ -853,7 +800,7 @@ export function HomeScreen({
                       <Text style={styles.sectionEmptyText}>
                         {activeCategory === 'today'
                           ? `暂时没有${section.title}待办`
-                          : longTermCategoryFilter || longTermTagFilter
+                          : longTermCategoryFilter
                             ? '当前筛选下没有遐筹事项'
                             : '暂时没有遐筹事项'}
                       </Text>
@@ -1062,9 +1009,15 @@ export function HomeScreen({
         </View>
       </View>
 
+      <CompletionToast
+        key={completionToast?.id ?? 'completion-toast'}
+        message={completionToast?.message ?? null}
+        onDone={() => setCompletionToast(null)}
+      />
+
       <TaskComposer
         visible={composerVisible}
-          initialCategory={composerCategory}
+        initialCategory={composerCategory}
         initialDate={composerDate}
         isSubmitting={taskState.isMutating}
         categorySuggestions={longTermCategoryDefaults.categories}
@@ -1083,11 +1036,10 @@ export function HomeScreen({
         isSubmitting={taskState.isMutating}
         onClose={() => setEditingLongTermTask(null)}
         onEditDefaults={() => setCategoryDefaultsVisible(true)}
-        onSave={async (task, category, tags) => {
-          const saved = await taskState.updateTaskLabels(task, category, tags);
+        onSave={async (task, category) => {
+          const saved = await taskState.updateTaskCategory(task, category);
           if (saved) {
             setLongTermCategoryFilter(null);
-            setLongTermTagFilter(null);
           }
           return saved;
         }}
@@ -1584,14 +1536,6 @@ const styles = StyleSheet.create({
   categoryFilterChipActive: {
     backgroundColor: colors.longTerm,
     borderColor: colors.longTerm,
-  },
-  tagFilterChip: {
-    backgroundColor: colors.accentSoft,
-    borderColor: '#EBD8D0',
-  },
-  tagFilterChipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
   },
   filterChipText: {
     color: colors.inkSoft,

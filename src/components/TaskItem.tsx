@@ -86,30 +86,18 @@ export function TaskItem({
           </View>
         ) : task.category === 'longTerm' ? (
           <View style={styles.longTermDetails}>
-            {task.customCategory || task.tags.length > 0 ? (
+            {task.customCategory ? (
               <View style={styles.longTermLabels}>
-                {task.customCategory ? (
-                  <View style={styles.categoryPill}>
-                    <Ionicons
-                      name="folder-outline"
-                      size={11}
-                      color={colors.longTerm}
-                    />
-                    <Text style={styles.categoryPillText}>
-                      {task.customCategory}
-                    </Text>
-                  </View>
-                ) : null}
-                {task.tags.slice(0, 3).map((tag) => (
-                  <View key={tag} style={styles.tagPill}>
-                    <Text style={styles.tagPillText}>#{tag}</Text>
-                  </View>
-                ))}
-                {task.tags.length > 3 ? (
-                  <Text style={styles.moreTags}>
-                    +{task.tags.length - 3}
+                <View style={styles.categoryPill}>
+                  <Ionicons
+                    name="folder-outline"
+                    size={11}
+                    color={colors.longTerm}
+                  />
+                  <Text style={styles.categoryPillText}>
+                    {task.customCategory}
                   </Text>
-                ) : null}
+                </View>
               </View>
             ) : null}
             <View style={styles.creationRow}>
@@ -130,7 +118,7 @@ export function TaskItem({
         {!task.isCompleted && task.category === 'longTerm' && onEdit ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="编辑遐筹分类和标签"
+            accessibilityLabel="编辑遐筹分类"
             disabled={disabled}
             hitSlop={6}
             onPress={onEdit}
@@ -254,24 +242,6 @@ const styles = StyleSheet.create({
     color: colors.longTerm,
     fontSize: 8,
     fontWeight: '800',
-  },
-  tagPill: {
-    minHeight: 22,
-    paddingHorizontal: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radii.pill,
-    backgroundColor: colors.accentSoft,
-  },
-  tagPillText: {
-    color: colors.accent,
-    fontSize: 8,
-    fontWeight: '700',
-  },
-  moreTags: {
-    color: colors.inkFaint,
-    fontSize: 8,
-    fontWeight: '700',
   },
   creationRow: {
     flexDirection: 'row',

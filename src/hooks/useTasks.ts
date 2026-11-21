@@ -12,7 +12,6 @@ import {
 import {
   createLocalTask,
   normalizeLongTermCategory,
-  normalizeTaskTags,
 } from '../taskUtils';
 import type { Task, TaskCategory, TaskPriority } from '../types';
 
@@ -27,14 +26,12 @@ export type TaskState = {
     priority: TaskPriority,
     scheduledDate: string,
     customCategory: string | null,
-    tags: string[],
   ) => Promise<boolean>;
   toggleTask: (task: Task) => Promise<boolean>;
   removeTask: (task: Task) => Promise<boolean>;
-  updateTaskLabels: (
+  updateTaskCategory: (
     task: Task,
     customCategory: string | null,
-    tags: string[],
   ) => Promise<boolean>;
   refresh: () => Promise<void>;
   clearError: () => void;
@@ -110,7 +107,6 @@ export function useTasks(userId?: string): TaskState {
     priority: TaskPriority,
     scheduledDate: string,
     customCategory: string | null,
-    tags: string[],
   ) {
     const cleanTitle = title.trim();
 
@@ -124,7 +120,6 @@ export function useTasks(userId?: string): TaskState {
       priority,
       scheduledDate,
       customCategory,
-      tags,
     );
     commit((current) => [optimisticTask, ...current]);
 
@@ -137,7 +132,6 @@ export function useTasks(userId?: string): TaskState {
           priority,
           scheduledDate,
           customCategory,
-          tags,
         );
         commit((current) =>
           current.map((task) =>
@@ -192,10 +186,9 @@ export function useTasks(userId?: string): TaskState {
     }
   }
 
-  async function updateTaskLabels(
+  async function updateTaskCategory(
     task: Task,
     customCategory: string | null,
-    tags: string[],
   ) {
     if (task.category !== 'longTerm') return false;
 
@@ -204,7 +197,6 @@ export function useTasks(userId?: string): TaskState {
     const nextTask: Task = {
       ...task,
       customCategory: normalizeLongTermCategory(customCategory),
-      tags: normalizeTaskTags(tags),
       updatedAt: new Date().toISOString(),
     };
     commit((current) =>
@@ -260,7 +252,7 @@ export function useTasks(userId?: string): TaskState {
     addTask,
     toggleTask,
     removeTask,
-    updateTaskLabels,
+    updateTaskCategory,
     refresh: () => load(false),
     clearError: () => setError(null),
   };

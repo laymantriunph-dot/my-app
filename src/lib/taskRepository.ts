@@ -41,7 +41,7 @@ export async function fetchRemoteTasks(userId: string): Promise<Task[]> {
   const { data, error } = await client
     .from('tasks')
     .select(
-      'id,user_id,title,category,priority,scheduled_date,is_completed,created_at,completed_at,updated_at',
+      'id,user_id,title,category,priority,scheduled_date,custom_category,tags,is_completed,created_at,completed_at,updated_at',
     )
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
@@ -65,6 +65,8 @@ export async function migrateGuestTasks(userId: string): Promise<Task[]> {
     category: task.category,
     priority: task.priority,
     scheduled_date: task.scheduledDate,
+    custom_category: task.customCategory,
+    tags: task.tags,
     is_completed: task.isCompleted,
     created_at: task.createdAt,
     completed_at: task.completedAt,
@@ -85,6 +87,8 @@ export async function insertRemoteTask(
   category: TaskCategory,
   priority: TaskPriority,
   scheduledDate: string,
+  customCategory: string | null,
+  tags: string[],
 ): Promise<Task> {
   const client = getSupabase();
   const { data, error } = await client
@@ -95,9 +99,11 @@ export async function insertRemoteTask(
       category,
       priority,
       scheduled_date: scheduledDate,
+      custom_category: customCategory,
+      tags,
     })
     .select(
-      'id,user_id,title,category,priority,scheduled_date,is_completed,created_at,completed_at,updated_at',
+      'id,user_id,title,category,priority,scheduled_date,custom_category,tags,is_completed,created_at,completed_at,updated_at',
     )
     .single();
 
@@ -117,6 +123,8 @@ export async function updateRemoteTask(
       category: task.category,
       priority: task.priority,
       scheduled_date: task.scheduledDate,
+      custom_category: task.customCategory,
+      tags: task.tags,
       is_completed: task.isCompleted,
       completed_at: task.completedAt,
       updated_at: new Date().toISOString(),
@@ -124,7 +132,7 @@ export async function updateRemoteTask(
     .eq('id', task.id)
     .eq('user_id', userId)
     .select(
-      'id,user_id,title,category,priority,scheduled_date,is_completed,created_at,completed_at,updated_at',
+      'id,user_id,title,category,priority,scheduled_date,custom_category,tags,is_completed,created_at,completed_at,updated_at',
     )
     .single();
 

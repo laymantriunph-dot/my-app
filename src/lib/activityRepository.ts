@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { getSupabase } from './supabase';
+import { normalizeTask } from '../taskUtils';
 import type {
   FocusSession,
   FocusSessionRow,
@@ -35,7 +36,7 @@ function archiveFromRow(row: TaskArchiveRow): TaskArchive {
     category: row.category,
     kind: row.record_type,
     recordDate: row.record_date,
-    tasks: row.tasks,
+    tasks: row.tasks.map(normalizeTask),
     taskCount: row.task_count,
     completedCount: row.completed_count,
     archivedAt: row.archived_at,
@@ -56,7 +57,10 @@ function focusSessionFromRow(row: FocusSessionRow): FocusSession {
 
 export async function readArchiveCache(scope: string): Promise<TaskArchive[]> {
   const raw = await AsyncStorage.getItem(storageKey(ARCHIVE_PREFIX, scope));
-  return readArray<TaskArchive>(raw);
+  return readArray<TaskArchive>(raw).map((archive) => ({
+    ...archive,
+    tasks: archive.tasks.map(normalizeTask),
+  }));
 }
 
 export async function writeArchiveCache(

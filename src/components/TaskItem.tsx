@@ -70,32 +70,56 @@ export function TaskItem({
         >
           {task.title}
         </Text>
-        {task.isCompleted || task.category === 'longTerm' ? (
+        {task.isCompleted ? (
           <View style={styles.metaRow}>
-            {task.isCompleted ? (
-              <>
-                <View
-                  style={[
-                    styles.categoryDot,
-                    { backgroundColor: markerColor },
-                  ]}
-                />
-                <Text style={styles.categoryLabel}>{categoryLabel}</Text>
-                <Text style={styles.metaDivider}>·</Text>
-                <Text style={styles.categoryHint}>已完成</Text>
-              </>
-            ) : (
-              <>
-                <Ionicons
-                  name="time-outline"
-                  size={12}
-                  color={colors.inkFaint}
-                />
-                <Text style={styles.creationTime}>
-                  创作于 {formatCreatedAt(task.createdAt)}
-                </Text>
-              </>
-            )}
+            <View
+              style={[
+                styles.categoryDot,
+                { backgroundColor: markerColor },
+              ]}
+            />
+            <Text style={styles.categoryLabel}>{categoryLabel}</Text>
+            <Text style={styles.metaDivider}>·</Text>
+            <Text style={styles.categoryHint}>已完成</Text>
+          </View>
+        ) : task.category === 'longTerm' ? (
+          <View style={styles.longTermDetails}>
+            {task.customCategory || task.tags.length > 0 ? (
+              <View style={styles.longTermLabels}>
+                {task.customCategory ? (
+                  <View style={styles.categoryPill}>
+                    <Ionicons
+                      name="folder-outline"
+                      size={11}
+                      color={colors.longTerm}
+                    />
+                    <Text style={styles.categoryPillText}>
+                      {task.customCategory}
+                    </Text>
+                  </View>
+                ) : null}
+                {task.tags.slice(0, 3).map((tag) => (
+                  <View key={tag} style={styles.tagPill}>
+                    <Text style={styles.tagPillText}>#{tag}</Text>
+                  </View>
+                ))}
+                {task.tags.length > 3 ? (
+                  <Text style={styles.moreTags}>
+                    +{task.tags.length - 3}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+            <View style={styles.creationRow}>
+              <Ionicons
+                name="time-outline"
+                size={11}
+                color={colors.inkFaint}
+              />
+              <Text style={styles.creationTime}>
+                创作于 {formatCreatedAt(task.createdAt)}
+              </Text>
+            </View>
           </View>
         ) : null}
       </View>
@@ -184,6 +208,52 @@ const styles = StyleSheet.create({
   creationTime: {
     color: colors.inkFaint,
     fontSize: 9,
+  },
+  longTermDetails: {
+    gap: 5,
+  },
+  longTermLabels: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  categoryPill: {
+    minHeight: 22,
+    paddingHorizontal: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderRadius: radii.pill,
+    backgroundColor: colors.longTermSoft,
+  },
+  categoryPillText: {
+    color: colors.longTerm,
+    fontSize: 8,
+    fontWeight: '800',
+  },
+  tagPill: {
+    minHeight: 22,
+    paddingHorizontal: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.pill,
+    backgroundColor: colors.accentSoft,
+  },
+  tagPillText: {
+    color: colors.accent,
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  moreTags: {
+    color: colors.inkFaint,
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  creationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   deleteButton: {
     width: 30,

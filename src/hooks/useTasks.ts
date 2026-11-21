@@ -22,6 +22,8 @@ export type TaskState = {
     category: TaskCategory,
     priority: TaskPriority,
     scheduledDate: string,
+    customCategory: string | null,
+    tags: string[],
   ) => Promise<boolean>;
   toggleTask: (task: Task) => Promise<boolean>;
   removeTask: (task: Task) => Promise<boolean>;
@@ -98,6 +100,8 @@ export function useTasks(userId?: string): TaskState {
     category: TaskCategory,
     priority: TaskPriority,
     scheduledDate: string,
+    customCategory: string | null,
+    tags: string[],
   ) {
     const cleanTitle = title.trim();
 
@@ -110,6 +114,8 @@ export function useTasks(userId?: string): TaskState {
       category,
       priority,
       scheduledDate,
+      customCategory,
+      tags,
     );
     commit((current) => [optimisticTask, ...current]);
 
@@ -121,6 +127,8 @@ export function useTasks(userId?: string): TaskState {
           category,
           priority,
           scheduledDate,
+          customCategory,
+          tags,
         );
         commit((current) =>
           current.map((task) =>

@@ -77,6 +77,8 @@ export function taskFromRow(row: TaskRow): Task {
     category: row.category,
     priority: row.priority,
     scheduledDate: row.scheduled_date,
+    customCategory: normalizeLongTermCategory(row.custom_category),
+    tags: normalizeTaskTags(row.tags),
     isCompleted: row.is_completed,
     createdAt: row.created_at,
     completedAt: row.completed_at,
@@ -89,6 +91,8 @@ export function createLocalTask(
   category: TaskCategory,
   priority: TaskPriority = 'primary',
   scheduledDate = getLocalDateKey(),
+  customCategory: string | null = null,
+  tags: string[] = [],
 ): Task {
   const now = new Date().toISOString();
 
@@ -98,6 +102,11 @@ export function createLocalTask(
     category,
     priority,
     scheduledDate,
+    customCategory:
+      category === 'longTerm'
+        ? normalizeLongTermCategory(customCategory)
+        : null,
+    tags: category === 'longTerm' ? normalizeTaskTags(tags) : [],
     isCompleted: false,
     createdAt: now,
     completedAt: null,
@@ -113,7 +122,37 @@ export function normalizeTask(task: Task): Task {
       task.priority ??
       (task.category === 'secondary' ? 'secondary' : 'primary'),
     scheduledDate: task.scheduledDate ?? getLocalDateKey(),
+    customCategory:
+      task.category === 'longTerm'
+        ? normalizeLongTermCategory(task.customCategory)
+        : null,
+    tags: task.category === 'longTerm' ? normalizeTaskTags(task.tags) : [],
   };
+}
+
+export function normalizeLongTermCategory(value: unknown) {
+  if (typeof value !== 'string') return null;
+  const category = value.trim().replace(/\s+/g, ' ').slice(0, 24);
+  return category.length > 0 ? category : null;
+}
+
+export function normalizeTaskTags(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  const tags: string[] = [];
+
+  for (const item of value) {
+    if (typeof item !== 'string') continue;
+    const tag = item.trim().replace(/^#+/, '').replace(/\s+/g, ' ').slice(0, 16);
+    const key = tag.toLocaleLowerCase();
+    if (!tag || seen.has(key)) continue;
+    seen.add(key);
+    tags.push(tag);
+    if (tags.length === 8) break;
+  }
+
+  return tags;
 }
 
 export function sortTasks(tasks: Task[]): Task[] {

@@ -85,6 +85,33 @@ function ArchiveTaskCard({
         <Text numberOfLines={2} style={styles.archiveCompletedTitle}>
           {task.title}
         </Text>
+        {task.category === 'longTerm' &&
+        (task.customCategory || task.tags.length > 0) ? (
+          <View style={styles.archiveLabels}>
+            {task.customCategory ? (
+              <View style={styles.archiveCategoryPill}>
+                <Ionicons
+                  name="folder-outline"
+                  size={10}
+                  color={colors.longTerm}
+                />
+                <Text style={styles.archiveCategoryText}>
+                  {task.customCategory}
+                </Text>
+              </View>
+            ) : null}
+            {task.tags.slice(0, 3).map((tag) => (
+              <View key={tag} style={styles.archiveTagPill}>
+                <Text style={styles.archiveTagText}>#{tag}</Text>
+              </View>
+            ))}
+            {task.tags.length > 3 ? (
+              <Text style={styles.archiveMoreTags}>
+                +{task.tags.length - 3}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
         <Text style={styles.archiveMetaDate}>
           {formatArchiveDate(archivedAt)}
         </Text>
@@ -677,6 +704,44 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 20,
     textDecorationLine: 'line-through',
+  },
+  archiveLabels: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  archiveCategoryPill: {
+    minHeight: 21,
+    paddingHorizontal: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderRadius: radii.pill,
+    backgroundColor: colors.longTermSoft,
+  },
+  archiveCategoryText: {
+    color: colors.longTerm,
+    fontSize: 8,
+    fontWeight: '800',
+  },
+  archiveTagPill: {
+    minHeight: 21,
+    paddingHorizontal: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.pill,
+    backgroundColor: colors.accentSoft,
+  },
+  archiveTagText: {
+    color: colors.accent,
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  archiveMoreTags: {
+    color: colors.inkFaint,
+    fontSize: 8,
+    fontWeight: '700',
   },
   archiveMetaDate: {
     color: colors.inkFaint,

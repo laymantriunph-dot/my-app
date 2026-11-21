@@ -5,6 +5,7 @@ import {
   Alert,
   Pressable,
   RefreshControl,
+  ScrollView,
   SectionList,
   StyleSheet,
   Text,
@@ -91,6 +92,15 @@ export function HomeScreen({
   const [todayKey, setTodayKey] = useState(getLocalDateKey());
   const [planningDate, setPlanningDate] = useState(todayKey);
   const [composerDate, setComposerDate] = useState(todayKey);
+  const [composerCategory, setComposerCategory] = useState<TaskCategory>(
+    composerPreference.preferredCategory,
+  );
+  const [longTermCategoryFilter, setLongTermCategoryFilter] = useState<
+    string | null
+  >(null);
+  const [longTermTagFilter, setLongTermTagFilter] = useState<string | null>(
+    null,
+  );
   const todayTasks = taskState.tasks.filter(
     (task) =>
       task.category === 'today' &&
@@ -99,6 +109,36 @@ export function HomeScreen({
         (task.completedAt && getLocalDateKey(task.completedAt) === todayKey)),
   );
   const stats = getTaskStats(todayTasks);
+  const longTermCategoryOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          taskState.tasks
+            .filter(
+              (task) =>
+                task.category === 'longTerm' &&
+                !task.isCompleted &&
+                task.customCategory,
+            )
+            .map((task) => task.customCategory as string),
+        ),
+      ).sort((left, right) => left.localeCompare(right, 'zh-CN')),
+    [taskState.tasks],
+  );
+  const longTermTagOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          taskState.tasks
+            .filter(
+              (task) =>
+                task.category === 'longTerm' && !task.isCompleted,
+            )
+            .flatMap((task) => task.tags),
+        ),
+      ).sort((left, right) => left.localeCompare(right, 'zh-CN')),
+    [taskState.tasks],
+  );
   const visibleTasks = useMemo(
     () =>
       sortTasks(
@@ -115,10 +155,25 @@ export function HomeScreen({
             );
           }
           // 遐筹是长期提醒，不受安排日期限制。
+          if (
+            longTermCategoryFilter &&
+            task.customCategory !== longTermCategoryFilter
+          ) {
+            return false;
+          }
+          if (longTermTagFilter && !task.tags.includes(longTermTagFilter)) {
+            return false;
+          }
           return !task.isCompleted;
         }),
       ),
-    [activeCategory, taskState.tasks, todayKey],
+    [
+      activeCategory,
+      longTermCategoryFilter,
+      longTermTagFilter,
+      taskState.tasks,
+      todayKey,
+    ],
   );
   const pendingTasks = visibleTasks.filter((task) => !task.isCompleted);
   const completedTasks = visibleTasks.filter((task) => task.isCompleted);
@@ -178,8 +233,12 @@ export function HomeScreen({
     await taskState.removeTask(task);
   }
 
-  function openComposer(date = todayKey) {
+  function openComposer(
+    date = todayKey,
+    category: TaskCategory = activeCategory,
+  ) {
     setComposerDate(date);
+    setComposerCategory(category);
     setComposerVisible(true);
   }
 
@@ -188,16 +247,24 @@ export function HomeScreen({
     category: TaskCategory,
     priority: TaskPriority,
     scheduledDate: string,
+    customCategory: string | null,
+    tags: string[],
   ) {
     const saved = await taskState.addTask(
       title,
       category,
       priority,
       scheduledDate,
+      customCategory,
+      tags,
     );
 
     if (saved) {
       await composerPreference.setPreferredCategory(category);
+      if (category === 'longTerm') {
+        setLongTermCategoryFilter(null);
+        setLongTermTagFilter(null);
+      }
       if (scheduledDate <= todayKey) {
         setActiveCategory(category);
         setShowCompleted(false);
@@ -484,6 +551,126 @@ export function HomeScreen({
         </View>
       )}
 
+      {activeCategory === 'longTerm' &&
+      (longTermCategoryOptions.length > 0 ||
+        longTermTagOptions.length > 0) ? (
+        <View style={styles.longTermFilters}>
+          <View style={styles.longTermFilterHeading}>
+            <Text style={styles.longTermFilterTitle}>筛选遐筹</Text>
+            {longTermCategoryFilter || longTermTagFilter ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setLongTermCategoryFilter(null);
+                  setLongTermTagFilter(null);
+                }}
+                style={styles.clearFilterButton}
+              >
+                <Text style={styles.clearFilterText}>清除</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.longTermFilterHint}>分类 + 标签</Text>
+            )}
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.longTermFilterRail}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{
+                selected:
+                  longTermCategoryFilter === null &&
+                  longTermTagFilter === null,
+              }}
+              onPress={() => {
+                setLongTermCategoryFilter(null);
+                setLongTermTagFilter(null);
+              }}
+              style={[
+                styles.filterChip,
+                longTermCategoryFilter === null &&
+                  longTermTagFilter === null &&
+                  styles.filterChipAllActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  longTermCategoryFilter === null &&
+                    longTermTagFilter === null &&
+                    styles.filterChipTextAllActive,
+                ]}
+              >
+                全部
+              </Text>
+            </Pressable>
+
+            {longTermCategoryOptions.map((category) => {
+              const isActive = longTermCategoryFilter === category;
+              return (
+                <Pressable
+                  key={`category:${category}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  onPress={() =>
+                    setLongTermCategoryFilter(isActive ? null : category)
+                  }
+                  style={[
+                    styles.filterChip,
+                    styles.categoryFilterChip,
+                    isActive && styles.categoryFilterChipActive,
+                  ]}
+                >
+                  <Ionicons
+                    name="folder-outline"
+                    size={12}
+                    color={isActive ? colors.white : colors.longTerm}
+                  />
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      { color: colors.longTerm },
+                      isActive && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </Pressable>
+              );
+            })}
+
+            {longTermTagOptions.map((tag) => {
+              const isActive = longTermTagFilter === tag;
+              return (
+                <Pressable
+                  key={`tag:${tag}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  onPress={() => setLongTermTagFilter(isActive ? null : tag)}
+                  style={[
+                    styles.filterChip,
+                    styles.tagFilterChip,
+                    isActive && styles.tagFilterChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      { color: colors.accent },
+                      isActive && styles.filterChipTextActive,
+                    ]}
+                  >
+                    #{tag}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
+
       {activeCategory === 'today' ? (
         <Pressable
           accessibilityRole="button"
@@ -666,7 +853,9 @@ export function HomeScreen({
                       <Text style={styles.sectionEmptyText}>
                         {activeCategory === 'today'
                           ? `暂时没有${section.title}待办`
-                          : '暂时没有遐筹事项'}
+                          : longTermCategoryFilter || longTermTagFilter
+                            ? '当前筛选下没有遐筹事项'
+                            : '暂时没有遐筹事项'}
                       </Text>
                     </View>
                   ) : (
@@ -875,7 +1064,7 @@ export function HomeScreen({
 
       <TaskComposer
         visible={composerVisible}
-        initialCategory={composerPreference.preferredCategory}
+          initialCategory={composerCategory}
         initialDate={composerDate}
         isSubmitting={taskState.isMutating}
         onClose={() => setComposerVisible(false)}
@@ -927,7 +1116,7 @@ export function HomeScreen({
         onClose={() => setDayPreviewVisible(false)}
         onAddTask={() => {
           setDayPreviewVisible(false);
-          openComposer(planningDate);
+          openComposer(planningDate, 'today');
         }}
       />
 
@@ -1321,6 +1510,86 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 3,
+  },
+  longTermFilters: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  longTermFilterHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  longTermFilterTitle: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  longTermFilterHint: {
+    color: colors.inkFaint,
+    fontSize: 9,
+  },
+  clearFilterButton: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surfaceMuted,
+  },
+  clearFilterText: {
+    color: colors.inkSoft,
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  longTermFilterRail: {
+    gap: 6,
+    paddingRight: 2,
+  },
+  filterChip: {
+    minHeight: 31,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  filterChipAllActive: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  categoryFilterChip: {
+    backgroundColor: colors.longTermSoft,
+    borderColor: '#D3E2DB',
+  },
+  categoryFilterChipActive: {
+    backgroundColor: colors.longTerm,
+    borderColor: colors.longTerm,
+  },
+  tagFilterChip: {
+    backgroundColor: colors.accentSoft,
+    borderColor: '#EBD8D0',
+  },
+  tagFilterChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  filterChipText: {
+    color: colors.inkSoft,
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  filterChipTextAllActive: {
+    color: colors.white,
+  },
+  filterChipTextActive: {
+    color: colors.white,
   },
   calendarButton: {
     minHeight: 58,

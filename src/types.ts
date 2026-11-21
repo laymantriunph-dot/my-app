@@ -13,6 +13,8 @@ export type Task = {
   category: TaskCategory;
   priority: TaskPriority;
   scheduledDate: string;
+  customCategory: string | null;
+  tags: string[];
   isCompleted: boolean;
   createdAt: string;
   completedAt: string | null;
@@ -26,6 +28,8 @@ export type TaskRow = {
   category: TaskCategory;
   priority: TaskPriority;
   scheduled_date: string;
+  custom_category: string | null;
+  tags: string[];
   is_completed: boolean;
   created_at: string;
   completed_at: string | null;

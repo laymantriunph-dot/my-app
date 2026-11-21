@@ -6,6 +6,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CATEGORY_META,
   getLocalDateKey,
+  normalizeLongTermCategory,
+  normalizeTaskTags,
   PRIORITY_META,
 } from '../taskUtils';
 import { colors, radii, shadows } from '../theme';
@@ -38,8 +41,12 @@ type TaskComposerProps = {
     category: TaskCategory,
     priority: TaskPriority,
     scheduledDate: string,
+    customCategory: string | null,
+    tags: string[],
   ) => Promise<boolean>;
 };
+
+const LONG_TERM_CATEGORY_SUGGESTIONS = ['备考', '锻炼', '阅读', '创作', '生活'];
 
 export function TaskComposer({
   visible,
@@ -55,6 +62,9 @@ export function TaskComposer({
   const [category, setCategory] = useState<TaskCategory>(initialCategory);
   const [priority, setPriority] = useState<TaskPriority>('primary');
   const [scheduledDate, setScheduledDate] = useState(initialDate);
+  const [longTermCategory, setLongTermCategory] = useState('');
+  const [tagDraft, setTagDraft] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const selectedDateLabel = new Intl.DateTimeFormat('zh-CN', {
     month: 'long',
@@ -68,6 +78,9 @@ export function TaskComposer({
       setCategory(initialCategory);
       setPriority('primary');
       setScheduledDate(initialDate);
+      setLongTermCategory('');
+      setTagDraft('');
+      setTags([]);
       setShowDatePicker(false);
     }
   }, [initialCategory, initialDate, visible]);
@@ -75,16 +88,38 @@ export function TaskComposer({
   async function submit() {
     const effectiveDate =
       category === 'longTerm' ? getLocalDateKey() : scheduledDate;
+    const customCategory =
+      category === 'longTerm'
+        ? normalizeLongTermCategory(longTermCategory)
+        : null;
+    const submittedTags =
+      category === 'longTerm'
+        ? normalizeTaskTags([
+            ...tags,
+            ...tagDraft.split(/[,，、\s]+/).filter(Boolean),
+          ])
+        : [];
     const didSave = await onSubmit(
       title,
       category,
       priority,
       effectiveDate,
+      customCategory,
+      submittedTags,
     );
 
     if (didSave) {
       onClose();
     }
+  }
+
+  function addTags() {
+    const nextTags = normalizeTaskTags([
+      ...tags,
+      ...tagDraft.split(/[,，、\s]+/).filter(Boolean),
+    ]);
+    setTags(nextTags);
+    setTagDraft('');
   }
 
   return (
@@ -101,12 +136,17 @@ export function TaskComposer({
       >
         <Pressable style={styles.backdrop} onPress={onClose} />
         <View
-          style={[
-            styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 20) + 8 },
-          ]}
+          style={styles.sheet}
         >
           <View style={styles.handle} />
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.sheetContent,
+              { paddingBottom: Math.max(insets.bottom, 20) + 8 },
+            ]}
+          >
           <View style={styles.headingRow}>
             <View>
               <Text style={styles.eyebrow}>NEW TASK</Text>
@@ -178,6 +218,104 @@ export function TaskComposer({
               );
             })}
           </View>
+
+          {category === 'longTerm' ? (
+            <View style={styles.longTermSection}>
+              <View style={styles.longTermHeading}>
+                <Text style={styles.longTermLabel}>分类</Text>
+                <Text style={styles.longTermOptional}>可选</Text>
+              </View>
+              <TextInput
+                value={longTermCategory}
+                onChangeText={setLongTermCategory}
+                placeholder="例如：备考、锻炼、阅读"
+                placeholderTextColor={colors.inkFaint}
+                maxLength={24}
+                returnKeyType="done"
+                style={styles.longTermInput}
+              />
+              <View style={styles.suggestionRow}>
+                {LONG_TERM_CATEGORY_SUGGESTIONS.map((suggestion) => {
+                  const isSelected = longTermCategory === suggestion;
+                  return (
+                    <Pressable
+                      key={suggestion}
+                      accessibilityRole="button"
+                      onPress={() =>
+                        setLongTermCategory(isSelected ? '' : suggestion)
+                      }
+                      style={[
+                        styles.suggestionChip,
+                        isSelected && styles.suggestionChipActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.suggestionText,
+                          isSelected && styles.suggestionTextActive,
+                        ]}
+                      >
+                        {suggestion}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <View style={styles.tagHeading}>
+                <Text style={styles.longTermLabel}>标签</Text>
+                <Text style={styles.longTermOptional}>最多 8 个</Text>
+              </View>
+              <View style={styles.tagInputRow}>
+                <TextInput
+                  value={tagDraft}
+                  onChangeText={setTagDraft}
+                  placeholder="输入标签，例如：英语、每天"
+                  placeholderTextColor={colors.inkFaint}
+                  maxLength={60}
+                  returnKeyType="done"
+                  onSubmitEditing={addTags}
+                  style={styles.tagInput}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="添加标签"
+                  disabled={!tagDraft.trim() || tags.length >= 8}
+                  onPress={addTags}
+                  style={[
+                    styles.addTagButton,
+                    (!tagDraft.trim() || tags.length >= 8) &&
+                      styles.addTagButtonDisabled,
+                  ]}
+                >
+                  <Ionicons name="add" size={20} color={colors.white} />
+                </Pressable>
+              </View>
+              {tags.length > 0 ? (
+                <View style={styles.tagList}>
+                  {tags.map((tag) => (
+                    <Pressable
+                      key={tag}
+                      accessibilityRole="button"
+                      accessibilityLabel={`移除标签 ${tag}`}
+                      onPress={() =>
+                        setTags((current) =>
+                          current.filter((item) => item !== tag),
+                        )
+                      }
+                      style={styles.tagChip}
+                    >
+                      <Text style={styles.tagChipText}>#{tag}</Text>
+                      <Ionicons name="close" size={12} color={colors.accent} />
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+              <Text style={styles.longTermHelper}>
+                分类和标签只用于整理长期事项，不会影响今日完成率。
+              </Text>
+            </View>
+          ) : null}
 
           {category === 'today' ? (
             <View style={styles.prioritySection}>
@@ -281,6 +419,7 @@ export function TaskComposer({
               </>
             )}
           </Pressable>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
       </Modal>
@@ -308,11 +447,13 @@ const styles = StyleSheet.create({
   sheet: {
     maxHeight: '94%',
     paddingTop: 10,
-    paddingHorizontal: 22,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     backgroundColor: colors.canvas,
     ...shadows.card,
+  },
+  sheetContent: {
+    paddingHorizontal: 22,
   },
   handle: {
     alignSelf: 'center',
@@ -384,6 +525,127 @@ const styles = StyleSheet.create({
   },
   prioritySection: {
     marginTop: 14,
+  },
+  longTermSection: {
+    marginTop: 15,
+    padding: 14,
+    borderRadius: radii.md,
+    backgroundColor: colors.longTermSoft,
+    borderWidth: 1,
+    borderColor: '#D3E2DB',
+  },
+  longTermHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  longTermLabel: {
+    color: colors.longTerm,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  longTermOptional: {
+    color: colors.inkFaint,
+    fontSize: 9,
+  },
+  longTermInput: {
+    height: 46,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: '#D3E2DB',
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  suggestionRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  suggestionChip: {
+    minHeight: 28,
+    paddingHorizontal: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: '#D3E2DB',
+  },
+  suggestionChipActive: {
+    backgroundColor: colors.longTerm,
+    borderColor: colors.longTerm,
+  },
+  suggestionText: {
+    color: colors.longTerm,
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  suggestionTextActive: {
+    color: colors.white,
+  },
+  tagHeading: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  tagInputRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    gap: 7,
+  },
+  tagInput: {
+    flex: 1,
+    height: 42,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: '#D3E2DB',
+    color: colors.ink,
+    fontSize: 12,
+  },
+  addTagButton: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.longTerm,
+  },
+  addTagButtonDisabled: {
+    opacity: 0.32,
+  },
+  tagList: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  tagChip: {
+    minHeight: 28,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+  },
+  tagChipText: {
+    color: colors.accent,
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  longTermHelper: {
+    marginTop: 10,
+    color: colors.inkFaint,
+    fontSize: 9,
+    lineHeight: 14,
   },
   priorityLabel: {
     marginBottom: 7,

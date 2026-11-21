@@ -73,11 +73,13 @@ export function TaskComposer({
   }, [initialCategory, initialDate, visible]);
 
   async function submit() {
+    const effectiveDate =
+      category === 'longTerm' ? getLocalDateKey() : scheduledDate;
     const didSave = await onSubmit(
       title,
       category,
       priority,
-      scheduledDate,
+      effectiveDate,
     );
 
     if (didSave) {
@@ -146,6 +148,7 @@ export function TaskComposer({
                   accessibilityState={{ selected: isSelected }}
                   onPress={() => {
                     setCategory(key);
+                    if (key === 'longTerm') setShowDatePicker(false);
                     onCategoryChange(key);
                   }}
                   style={[
@@ -218,7 +221,8 @@ export function TaskComposer({
             </View>
           ) : null}
 
-          <View style={styles.scheduleSection}>
+          {category === 'today' ? (
+            <View style={styles.scheduleSection}>
             <View style={styles.scheduleHeading}>
               <Text style={styles.scheduleLabel}>安排日期</Text>
               <Text style={styles.scheduleHint}>
@@ -249,7 +253,8 @@ export function TaskComposer({
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
             </Pressable>
-          </View>
+            </View>
+          ) : null}
 
           <Pressable
             accessibilityRole="button"
@@ -266,9 +271,11 @@ export function TaskComposer({
             ) : (
               <>
                 <Text style={styles.submitText}>
-                  {scheduledDate === getLocalDateKey()
-                    ? '加入谋篇'
-                    : `安排到 ${selectedDateLabel}`}
+                  {category === 'longTerm'
+                    ? '加入遐筹'
+                    : scheduledDate === getLocalDateKey()
+                      ? '加入谋篇'
+                      : `安排到 ${selectedDateLabel}`}
                 </Text>
                 <Ionicons name="arrow-up" size={19} color={colors.white} />
               </>

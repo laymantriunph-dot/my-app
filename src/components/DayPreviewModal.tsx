@@ -42,6 +42,7 @@ export function DayPreviewModal({
   }).format(new Date(`${date}T12:00:00`));
   const dayTasks = tasks.filter(
     (task) =>
+      task.category === 'today' &&
       !task.isCompleted &&
       (isToday
         ? task.scheduledDate <= todayKey

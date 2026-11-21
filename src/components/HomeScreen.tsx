@@ -104,8 +104,8 @@ export function HomeScreen({
       sortTasks(
         taskState.tasks.filter((task) => {
           if (task.category !== activeCategory) return false;
-          if (task.scheduledDate > todayKey) return false;
           if (activeCategory === 'today') {
+            if (task.scheduledDate > todayKey) return false;
             return (
               !task.isCompleted ||
               Boolean(
@@ -114,6 +114,7 @@ export function HomeScreen({
               )
             );
           }
+          // 遐筹是长期提醒，不受安排日期限制。
           return !task.isCompleted;
         }),
       ),
@@ -162,7 +163,10 @@ export function HomeScreen({
     (task) => !task.isCompleted && task.scheduledDate <= todayKey,
   ).length;
   const futurePlannedCount = taskState.tasks.filter(
-    (task) => !task.isCompleted && task.scheduledDate > todayKey,
+    (task) =>
+      task.category === 'today' &&
+      !task.isCompleted &&
+      task.scheduledDate > todayKey,
   ).length;
 
   function confirmDelete(task: Task) {
@@ -367,10 +371,10 @@ export function HomeScreen({
               遐筹 · LONG VIEW
             </Text>
             <Text style={styles.reflectionTitle}>
-              不急着完成，但始终向前。
+              把重要的事，放在长期视野里。
             </Text>
             <Text style={styles.reflectionHint}>
-              {pendingTasks.length} 项遐筹正在蓄势
+              {pendingTasks.length} 个长期提醒 · 不计入今日完成率
             </Text>
           </View>
         </View>
@@ -383,7 +387,7 @@ export function HomeScreen({
             (task) =>
               task.category === key &&
               !task.isCompleted &&
-              task.scheduledDate <= todayKey,
+              (key === 'longTerm' || task.scheduledDate <= todayKey),
           );
           const categoryStats = getTaskStats(categoryTasks);
           const isActive = activeCategory === key;
@@ -420,37 +424,38 @@ export function HomeScreen({
                 </Text>
               </View>
               <Text style={styles.categoryCount}>
-                {categoryStats.remaining} 项待办
+                {categoryStats.remaining} 项
+                {key === 'longTerm' ? '提醒' : '待办'}
               </Text>
             </Pressable>
           );
         })}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="打开日历"
-        onPress={() => setPlannerVisible(true)}
-        style={({ pressed }) => [
-          styles.calendarButton,
-          pressed && styles.toolPressed,
-        ]}
-      >
-        <View style={styles.calendarIcon}>
-          <Ionicons name="calendar-outline" size={18} color={colors.ink} />
-        </View>
-        <View style={styles.calendarCopy}>
-          <Text style={styles.calendarTitle}>
-            Calendar
-          </Text>
-          <Text style={styles.calendarHint}>
-            {futurePlannedCount > 0
-              ? `${futurePlannedCount} 项未来计划`
-              : '打开日历安排未来'}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
-      </Pressable>
+      {activeCategory === 'today' ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="打开日历"
+          onPress={() => setPlannerVisible(true)}
+          style={({ pressed }) => [
+            styles.calendarButton,
+            pressed && styles.toolPressed,
+          ]}
+        >
+          <View style={styles.calendarIcon}>
+            <Ionicons name="calendar-outline" size={18} color={colors.ink} />
+          </View>
+          <View style={styles.calendarCopy}>
+            <Text style={styles.calendarTitle}>Calendar</Text>
+            <Text style={styles.calendarHint}>
+              {futurePlannedCount > 0
+                ? `${futurePlannedCount} 项未来计划`
+                : '打开日历安排未来'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
+        </Pressable>
+      ) : null}
 
       <View style={styles.todoTools}>
         <Ionicons
@@ -495,7 +500,7 @@ export function HomeScreen({
           <Text style={styles.listDescription}>
             {activeCategory === 'today'
               ? '先完成 Primary，再让其余事情各归其位。'
-              : '让重要而不紧急的事，慢慢生长。'}
+              : '长期提醒不计入今天，只在需要时提醒你继续向前。'}
           </Text>
         </View>
         <Text style={styles.listCount}>
@@ -721,7 +726,9 @@ export function HomeScreen({
               ]}
             >
               <Ionicons name="add" size={26} color={colors.white} />
-              <Text style={styles.addButtonText}>添加待办</Text>
+              <Text style={styles.addButtonText}>
+                {activeCategory === 'longTerm' ? '添加遐筹' : '添加待办'}
+              </Text>
             </Pressable>
           </View>
 

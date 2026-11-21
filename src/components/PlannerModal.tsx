@@ -73,7 +73,7 @@ export function PlannerModal({
     const counts: Record<string, number> = {};
 
     for (const task of tasks) {
-      if (task.isCompleted) continue;
+      if (task.isCompleted || task.category !== 'today') continue;
       if (task.scheduledDate < todayKey) {
         counts[todayKey] = (counts[todayKey] ?? 0) + 1;
       } else {

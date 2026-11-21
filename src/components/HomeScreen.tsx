@@ -435,24 +435,49 @@ export function HomeScreen({
       </View>
 
       {activeCategory === 'today' ? (
-        <View style={styles.compactProgressCard}>
-          <View style={styles.compactProgressCopy}>
-            <Text style={styles.compactProgressLabel}>今日进度</Text>
-            <Text style={styles.compactProgressValue}>
-              {stats.completed} / {stats.total}
+        <View style={styles.progressAndCalendarRow}>
+          <View style={styles.compactProgressCard}>
+            <View style={styles.compactProgressCopy}>
+              <Text style={styles.compactProgressLabel}>今日进度</Text>
+              <Text style={styles.compactProgressValue}>
+                {stats.completed} / {stats.total}
+              </Text>
+            </View>
+            <View style={styles.compactProgressTrack}>
+              <View
+                style={[
+                  styles.compactProgressFill,
+                  { width: `${stats.percentage}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.compactProgressPercent}>
+              {stats.percentage}%
             </Text>
           </View>
-          <View style={styles.compactProgressTrack}>
-            <View
-              style={[
-                styles.compactProgressFill,
-                { width: `${stats.percentage}%` },
-              ]}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="打开日历查看未来待办"
+            onPress={() => setPlannerVisible(true)}
+            style={({ pressed }) => [
+              styles.calendarCompanion,
+              pressed && styles.toolPressed,
+            ]}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={16}
+              color={colors.longTerm}
             />
-          </View>
-          <Text style={styles.compactProgressPercent}>
-            {stats.percentage}%
-          </Text>
+            <Text style={styles.calendarCompanionText}>日历</Text>
+            {futurePlannedCount > 0 ? (
+              <View style={styles.calendarCompanionBadge}>
+                <Text style={styles.calendarCompanionBadgeText}>
+                  {futurePlannedCount > 99 ? '99+' : futurePlannedCount}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
       ) : null}
 
@@ -488,31 +513,8 @@ export function HomeScreen({
           </Text>
         </View>
 
-        {activeCategory === 'today' ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="打开日历查看未来待办"
-            onPress={() => setPlannerVisible(true)}
-            style={({ pressed }) => [
-              styles.compactCalendarButton,
-              pressed && styles.toolPressed,
-            ]}
-          >
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={colors.longTerm}
-            />
-            <Text style={styles.compactCalendarText}>未来</Text>
-            {futurePlannedCount > 0 ? (
-              <View style={styles.compactCalendarBadge}>
-                <Text style={styles.compactCalendarBadgeText}>
-                  {futurePlannedCount > 99 ? '99+' : futurePlannedCount}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
-        ) : longTermCategoryOptions.length > 0 ? (
+        {activeCategory === 'longTerm' &&
+        longTermCategoryOptions.length > 0 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -1245,20 +1247,26 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
   },
-  compactProgressCard: {
-    minHeight: 52,
+  progressAndCalendarRow: {
     marginTop: 9,
-    paddingHorizontal: 13,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 9,
+  },
+  compactProgressCard: {
+    flex: 2,
+    minHeight: 52,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
+    gap: 9,
     borderRadius: 14,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
   },
   compactProgressCopy: {
-    width: 68,
+    width: 58,
   },
   compactProgressLabel: {
     color: colors.inkFaint,
@@ -1284,7 +1292,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   compactProgressPercent: {
-    width: 34,
+    width: 31,
     color: colors.inkSoft,
     fontSize: 11,
     fontWeight: '800',
@@ -1806,21 +1814,25 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '600',
   },
-  compactCalendarButton: {
-    minHeight: 31,
-    paddingHorizontal: 9,
+  calendarCompanion: {
+    flex: 1,
+    minHeight: 52,
+    paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 5,
-    borderRadius: radii.pill,
+    borderRadius: 14,
     backgroundColor: colors.longTermSoft,
+    borderWidth: 1,
+    borderColor: '#D3E2DB',
   },
-  compactCalendarText: {
+  calendarCompanionText: {
     color: colors.longTerm,
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
   },
-  compactCalendarBadge: {
+  calendarCompanionBadge: {
     minWidth: 17,
     height: 17,
     paddingHorizontal: 4,
@@ -1829,7 +1841,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: colors.surface,
   },
-  compactCalendarBadgeText: {
+  calendarCompanionBadgeText: {
     color: colors.longTerm,
     fontSize: 8,
     fontWeight: '800',

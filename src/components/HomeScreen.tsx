@@ -30,7 +30,6 @@ import {
   getDisplayName,
   getLocalDateKey,
   getTaskStats,
-  getTodayLabel,
   PRIORITY_META,
   sortTasks,
 } from '../taskUtils';
@@ -63,6 +62,23 @@ type HomeScreenProps = {
 };
 
 type MainSection = 'energy' | 'records';
+
+function formatClock(date = new Date()) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+}
+
+function formatShortDate(date = new Date()) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(date);
+}
+
 type TaskSection = {
   key: string;
   title: string;
@@ -101,6 +117,7 @@ export function HomeScreen({
     useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [todayKey, setTodayKey] = useState(getLocalDateKey());
+  const [clockLabel, setClockLabel] = useState(formatClock());
   const [planningDate, setPlanningDate] = useState(todayKey);
   const [composerDate, setComposerDate] = useState(todayKey);
   const [composerCategory, setComposerCategory] = useState<TaskCategory>(
@@ -207,7 +224,6 @@ export function HomeScreen({
         ];
   const activeMeta = CATEGORY_META[activeCategory];
   const displayName = getDisplayName(user?.email);
-  const avatarLetter = (displayName[0] ?? '我').toUpperCase();
   const allPendingCount = taskState.tasks.filter(
     (task) => !task.isCompleted && task.scheduledDate <= todayKey,
   ).length;
@@ -336,58 +352,16 @@ export function HomeScreen({
 
   useEffect(() => {
     const interval = setInterval(() => {
+      setClockLabel(formatClock());
       setTodayKey(getLocalDateKey());
-    }, 60_000);
+    }, 30_000);
 
     return () => clearInterval(interval);
   }, []);
 
   const listHeader = (
     <View>
-      <View style={styles.headerActions}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Accomplished 已完成记录"
-          onPress={() => setArchiveVisible(true)}
-          style={({ pressed }) => [
-            styles.headerActionPrimary,
-            pressed && styles.toolPressed,
-          ]}
-        >
-          <View style={styles.headerActionIcon}>
-            <Ionicons
-              name="trophy-outline"
-              size={15}
-              color={colors.secondary}
-            />
-          </View>
-          <Text style={styles.headerActionTitle}>Accomplished</Text>
-          <Text style={styles.headerActionCount}>
-            {archiveState.archives.length}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Focus 计时记录"
-          onPress={() => setFocusHistoryVisible(true)}
-          style={({ pressed }) => [
-            styles.headerActionSecondary,
-            pressed && styles.toolPressed,
-          ]}
-        >
-          <View style={styles.headerActionIconFocus}>
-            <Ionicons
-              name="timer-outline"
-              size={15}
-              color={colors.longTerm}
-            />
-          </View>
-          <Text style={styles.headerActionTitleFocus}>Focus</Text>
-        </Pressable>
-      </View>
-
       <View style={styles.greetingBlock}>
-        <Text style={styles.dateLabel}>{getTodayLabel()}</Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="自定义今日寄语"
@@ -631,41 +605,70 @@ export function HomeScreen({
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.appShell}>
-        <View style={styles.topBar}>
-          <View style={styles.brandRow}>
-            <View style={styles.miniMark}>
-              <Text style={styles.miniMarkText}>三</Text>
-            </View>
-            <View>
-              <Text style={styles.brandName}>三分待办</Text>
-              <Text style={styles.syncMode}>
-                {isLocal ? '仅保存在本机' : '云端同步已开启'}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.topBarActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="账号信息"
-              onPress={openAccountMenu}
-              style={({ pressed }) => [
-                styles.avatar,
-                pressed && styles.avatarPressed,
+        <View style={styles.topDashboard}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${clockLabel}，${formatShortDate()}，账号信息`}
+            onPress={openAccountMenu}
+            style={({ pressed }) => [
+              styles.timeCard,
+              pressed && styles.toolPressed,
+            ]}
+          >
+            <Text style={styles.timeClock}>{clockLabel}</Text>
+            <Text style={styles.timeDate}>{formatShortDate()}</Text>
+            <View
+              style={[
+                styles.timeAccountDot,
+                {
+                  backgroundColor: isLocal
+                    ? colors.secondary
+                    : colors.success,
+                },
               ]}
-            >
-              <Text style={styles.avatarText}>{avatarLetter}</Text>
-              <View
-                style={[
-                  styles.accountDot,
-                  {
-                    backgroundColor: isLocal
-                      ? colors.secondary
-                      : colors.success,
-                  },
-                ]}
+            />
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Accomplished 已完成记录"
+            onPress={() => setArchiveVisible(true)}
+            style={({ pressed }) => [
+              styles.headerActionPrimary,
+              pressed && styles.toolPressed,
+            ]}
+          >
+            <View style={styles.headerActionIcon}>
+              <Ionicons
+                name="trophy-outline"
+                size={15}
+                color={colors.secondary}
               />
-            </Pressable>
-          </View>
+            </View>
+            <Text style={styles.headerActionTitle}>Accomplished</Text>
+            <Text style={styles.headerActionCount}>
+              {archiveState.archives.length}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Focus 计时记录"
+            onPress={() => setFocusHistoryVisible(true)}
+            style={({ pressed }) => [
+              styles.headerActionSecondary,
+              pressed && styles.toolPressed,
+            ]}
+          >
+            <View style={styles.headerActionIconFocus}>
+              <Ionicons
+                name="timer-outline"
+                size={15}
+                color={colors.longTerm}
+              />
+            </View>
+            <Text style={styles.headerActionTitleFocus}>Focus</Text>
+          </Pressable>
         </View>
 
         <View style={styles.pages}>
@@ -1077,6 +1080,46 @@ const styles = StyleSheet.create({
     paddingTop: 3,
     paddingBottom: 104,
   },
+  topDashboard: {
+    marginHorizontal: 18,
+    marginTop: 6,
+    marginBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  timeCard: {
+    width: 82,
+    height: 43,
+    marginRight: 6,
+    paddingHorizontal: 9,
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  timeClock: {
+    color: colors.ink,
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  timeDate: {
+    marginTop: 1,
+    color: colors.inkFaint,
+    fontSize: 8,
+    fontWeight: '600',
+  },
+  timeAccountDot: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
   topBar: {
     marginHorizontal: 18,
     marginTop: 6,
@@ -1126,40 +1169,40 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerActionPrimary: {
-    flex: 1,
+    flex: 1.8,
     minHeight: 43,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     borderRadius: 14,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
   },
   headerActionSecondary: {
-    width: 103,
+    flex: 1,
     minHeight: 43,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 5,
     borderRadius: 14,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
   },
   headerActionIcon: {
-    width: 27,
-    height: 27,
+    width: 25,
+    height: 25,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 9,
     backgroundColor: colors.secondarySoft,
   },
   headerActionIconFocus: {
-    width: 27,
-    height: 27,
+    width: 25,
+    height: 25,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 9,
@@ -1169,13 +1212,13 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.ink,
     fontFamily: 'serif',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   headerActionTitleFocus: {
     color: colors.ink,
     fontFamily: 'serif',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   headerActionCount: {

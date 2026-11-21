@@ -12,7 +12,7 @@ type CompletionToastProps = {
 export function CompletionToast({ message, onDone }: CompletionToastProps) {
   const [visibleMessage, setVisibleMessage] = useState<string | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(10)).current;
+  const translateY = useRef(new Animated.Value(-8)).current;
   const onDoneRef = useRef(onDone);
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export function CompletionToast({ message, onDone }: CompletionToastProps) {
     if (!message) return;
     setVisibleMessage(message);
     opacity.setValue(0);
-    translateY.setValue(10);
+    translateY.setValue(-8);
 
     Animated.parallel([
       Animated.timing(opacity, {
@@ -46,7 +46,7 @@ export function CompletionToast({ message, onDone }: CompletionToastProps) {
           useNativeDriver: true,
         }),
         Animated.timing(translateY, {
-          toValue: 8,
+          toValue: -6,
           duration: 180,
           useNativeDriver: true,
         }),
@@ -75,9 +75,11 @@ export function CompletionToast({ message, onDone }: CompletionToastProps) {
       ]}
     >
       <View style={styles.icon}>
-        <Ionicons name="checkmark" size={17} color={colors.white} />
+        <Ionicons name="checkmark" size={14} color={colors.longTerm} />
       </View>
-      <Text style={styles.message}>{visibleMessage}</Text>
+      <Text numberOfLines={2} style={styles.message}>
+        {visibleMessage}
+      </Text>
     </Animated.View>
   );
 }
@@ -85,37 +87,37 @@ export function CompletionToast({ message, onDone }: CompletionToastProps) {
 const styles = StyleSheet.create({
   toast: {
     position: 'absolute',
-    left: 24,
-    right: 24,
-    bottom: 92,
-    minHeight: 58,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    top: 10,
+    left: 48,
+    right: 48,
+    minHeight: 46,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     borderRadius: radii.md,
-    backgroundColor: '#30483D',
+    backgroundColor: 'rgba(254,254,252,0.97)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: colors.line,
     zIndex: 100,
     ...shadows.card,
-    elevation: 12,
+    elevation: 6,
   },
   icon: {
-    width: 30,
-    height: 30,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
-    backgroundColor: colors.longTerm,
+    borderRadius: 8,
+    backgroundColor: colors.longTermSoft,
   },
   message: {
     flex: 1,
-    color: '#FFFBF4',
+    color: colors.inkSoft,
     fontFamily: 'serif',
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '500',
   },
 });

@@ -453,27 +453,29 @@ export function HomeScreen({
                     color={isActive ? colors.white : meta.color}
                   />
                 </View>
-                <View
-                  style={[
-                    styles.categoryBadge,
-                    {
-                      backgroundColor: isActive
-                        ? colors.surface
-                        : meta.softColor,
-                    },
-                  ]}
-                >
-                  <Text
+                {key === 'today' ? (
+                  <View
                     style={[
-                      styles.categoryBadgeText,
-                      { color: meta.color },
+                      styles.categoryBadge,
+                      {
+                        backgroundColor: isActive
+                          ? colors.surface
+                          : meta.softColor,
+                      },
                     ]}
                   >
-                    {categoryStats.remaining > 99
-                      ? '99+'
-                      : categoryStats.remaining}
-                  </Text>
-                </View>
+                    <Text
+                      style={[
+                        styles.categoryBadgeText,
+                        { color: meta.color },
+                      ]}
+                    >
+                      {categoryStats.remaining > 99
+                        ? '99+'
+                        : categoryStats.remaining}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <View style={styles.categoryCopy}>
                 <Text

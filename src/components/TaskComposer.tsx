@@ -6,6 +6,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,7 +14,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CATEGORY_META, PRIORITY_META } from '../taskUtils';
+import {
+  CATEGORY_META,
+  getLocalDateKey,
+  getUpcomingDays,
+  PRIORITY_META,
+} from '../taskUtils';
 import { colors, radii, shadows } from '../theme';
 import {
   ACTIVE_TASK_CATEGORIES,
@@ -24,37 +30,50 @@ import {
 type TaskComposerProps = {
   visible: boolean;
   initialCategory: TaskCategory;
+  initialDate: string;
   isSubmitting: boolean;
   onClose: () => void;
+  onCategoryChange: (category: TaskCategory) => void;
   onSubmit: (
     title: string,
     category: TaskCategory,
     priority: TaskPriority,
+    scheduledDate: string,
   ) => Promise<boolean>;
 };
 
 export function TaskComposer({
   visible,
   initialCategory,
+  initialDate,
   isSubmitting,
   onClose,
+  onCategoryChange,
   onSubmit,
 }: TaskComposerProps) {
   const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<TaskCategory>(initialCategory);
   const [priority, setPriority] = useState<TaskPriority>('primary');
+  const [scheduledDate, setScheduledDate] = useState(initialDate);
+  const dayOptions = getUpcomingDays(10);
 
   useEffect(() => {
     if (visible) {
       setTitle('');
       setCategory(initialCategory);
       setPriority('primary');
+      setScheduledDate(initialDate);
     }
-  }, [initialCategory, visible]);
+  }, [initialCategory, initialDate, visible]);
 
   async function submit() {
-    const didSave = await onSubmit(title, category, priority);
+    const didSave = await onSubmit(
+      title,
+      category,
+      priority,
+      scheduledDate,
+    );
 
     if (didSave) {
       onClose();
@@ -119,7 +138,10 @@ export function TaskComposer({
                   key={key}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: isSelected }}
-                  onPress={() => setCategory(key)}
+                  onPress={() => {
+                    setCategory(key);
+                    onCategoryChange(key);
+                  }}
                   style={[
                     styles.categoryButton,
                     {
@@ -190,6 +212,54 @@ export function TaskComposer({
             </View>
           ) : null}
 
+          <View style={styles.scheduleSection}>
+            <View style={styles.scheduleHeading}>
+              <Text style={styles.scheduleLabel}>安排日期</Text>
+              <Text style={styles.scheduleHint}>
+                到这一天才会进入清单与进度
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.dayRail}
+            >
+              {dayOptions.map((day) => {
+                const selected = day.key === scheduledDate;
+
+                return (
+                  <Pressable
+                    key={day.key}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    onPress={() => setScheduledDate(day.key)}
+                    style={[
+                      styles.dayButton,
+                      selected && styles.dayButtonSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dayLabel,
+                        selected && styles.dayLabelSelected,
+                      ]}
+                    >
+                      {day.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.dayDate,
+                        selected && styles.dayDateSelected,
+                      ]}
+                    >
+                      {day.shortDate}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           <Pressable
             accessibilityRole="button"
             disabled={!title.trim() || isSubmitting}
@@ -204,7 +274,14 @@ export function TaskComposer({
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <>
-                <Text style={styles.submitText}>加入清单</Text>
+                <Text style={styles.submitText}>
+                  {scheduledDate === getLocalDateKey()
+                    ? '加入谋篇'
+                    : `安排到 ${
+                        dayOptions.find((day) => day.key === scheduledDate)
+                          ?.shortDate ?? scheduledDate
+                      }`}
+                </Text>
                 <Ionicons name="arrow-up" size={19} color={colors.white} />
               </>
             )}
@@ -225,6 +302,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20, 27, 23, 0.35)',
   },
   sheet: {
+    maxHeight: '94%',
     paddingTop: 10,
     paddingHorizontal: 22,
     borderTopLeftRadius: 30,
@@ -329,6 +407,59 @@ const styles = StyleSheet.create({
     marginTop: 3,
     color: colors.inkFaint,
     fontSize: 9,
+  },
+  scheduleSection: {
+    marginTop: 16,
+  },
+  scheduleHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  scheduleLabel: {
+    color: colors.ink,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  scheduleHint: {
+    color: colors.inkFaint,
+    fontSize: 8,
+  },
+  dayRail: {
+    gap: 7,
+    paddingTop: 8,
+    paddingBottom: 2,
+  },
+  dayButton: {
+    width: 57,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  dayButtonSelected: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  dayLabel: {
+    color: colors.inkSoft,
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  dayLabelSelected: {
+    color: '#E7DDC8',
+  },
+  dayDate: {
+    marginTop: 4,
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  dayDateSelected: {
+    color: colors.white,
   },
   submitButton: {
     height: 56,

@@ -1,19 +1,20 @@
 # 三分待办
 
-一个面向个人使用的手机待办 App。它把任务分成三个清晰层级：
+一个面向个人使用的手机待办与专注 App：
 
 - **朝计**：今天需要完成的事，并分为「Primary / Secondly.」
-- **遐筹**：需要持续推进、没有当天截止压力的事
-- **次重要**：有空时再处理的事
+- **遐筹**：重要但不急于当天完成、需要持续推进的事
 
-当前版本分为「朝计」与「记录」两个主栏目：
+当前版本底部栏目为「谋篇」与「时笺」：
 
-- **朝计**：将当天待办分为「Primary / Secondly.」，将长期事项放入「遐筹」，并且只在朝计清单显示当日可展开的已完成区域。
-- **记录**：点击中央计时圆设置倒计时，选择时长后点击 `Begin!` 开始；支持自定义倒计时、正计时、全屏沉浸模式和结束铃声。
+- **谋篇**：包含朝计与遐筹，并可提前安排未来 10 天的任务。未来任务只在指定日期进入清单，不影响当天完成百分比。
+- **时笺**：点击中央计时圆设置倒计时，选择时长后点击 `Begin!` 开始；支持自定义倒计时、正计时、全屏沉浸模式和结束铃声。
 - **Accomplished**：完成事项自动按「朝计 / 遐筹」并列保存；朝计内再按 `Primary / Secondly.` 分组，每个任务单独显示，可通过「泯迹」选择后移除任务记录。
 - **Focus**：与 Accomplished 并列，用于查看和筛选全部计时记录；记录页本身只显示当天记录。
 
 未完成任务只展示任务标题；遐筹任务额外显示创作时间。计时记录删除继续使用 `delete`。
+
+新增任务会记住上一次选择的分类和当前计划日期，方便连续安排同一类事项。
 
 计时结束提供 10 个本地柔和铃声：Zen Bowl、Morning Bell、Air Chime、Wooden Fish、Water Drop、Deep Gong、Two-Note Rise、Crystal Echo、Quiet Harp 和 Focus Bell，可在记录页试听并切换。
 
@@ -55,6 +56,7 @@ npm run build:web
    [`supabase/migrations/202611200001_add_archives_and_focus_sessions.sql`](supabase/migrations/202611200001_add_archives_and_focus_sessions.sql)
    [`supabase/migrations/202611200002_refine_today_priorities.sql`](supabase/migrations/202611200002_refine_today_priorities.sql)
    [`supabase/migrations/202611200003_auto_completion_history.sql`](supabase/migrations/202611200003_auto_completion_history.sql)
+   [`supabase/migrations/202611210001_add_scheduled_dates.sql`](supabase/migrations/202611210001_add_scheduled_dates.sql)
 
 3. 将 [`.env.example`](.env.example) 复制为 `.env`，填写 Project URL 和 Publishable key：
 

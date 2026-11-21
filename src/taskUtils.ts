@@ -76,6 +76,7 @@ export function taskFromRow(row: TaskRow): Task {
     title: row.title,
     category: row.category,
     priority: row.priority,
+    scheduledDate: row.scheduled_date,
     isCompleted: row.is_completed,
     createdAt: row.created_at,
     completedAt: row.completed_at,
@@ -87,6 +88,7 @@ export function createLocalTask(
   title: string,
   category: TaskCategory,
   priority: TaskPriority = 'primary',
+  scheduledDate = getLocalDateKey(),
 ): Task {
   const now = new Date().toISOString();
 
@@ -95,6 +97,7 @@ export function createLocalTask(
     title: title.trim(),
     category,
     priority,
+    scheduledDate,
     isCompleted: false,
     createdAt: now,
     completedAt: null,
@@ -109,6 +112,7 @@ export function normalizeTask(task: Task): Task {
     priority:
       task.priority ??
       (task.category === 'secondary' ? 'secondary' : 'primary'),
+    scheduledDate: task.scheduledDate ?? getLocalDateKey(),
   };
 }
 
@@ -158,6 +162,34 @@ export function isSameLocalDay(
   reference: Date = new Date(),
 ): boolean {
   return getLocalDateKey(value) === getLocalDateKey(reference);
+}
+
+export function getUpcomingDays(count = 10, base = new Date()) {
+  const weekday = new Intl.DateTimeFormat('zh-CN', {
+    weekday: 'short',
+  });
+
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(
+      base.getFullYear(),
+      base.getMonth(),
+      base.getDate() + index,
+      12,
+    );
+
+    return {
+      key: getLocalDateKey(date),
+      label:
+        index === 0 ? '今天' : index === 1 ? '明天' : weekday.format(date),
+      shortDate: `${date.getMonth() + 1}/${date.getDate()}`,
+      fullLabel: new Intl.DateTimeFormat('zh-CN', {
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long',
+      }).format(date),
+      date,
+    };
+  });
 }
 
 export function getGreeting(date = new Date()): string {

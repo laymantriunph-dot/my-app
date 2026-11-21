@@ -21,6 +21,7 @@ export type TaskState = {
     title: string,
     category: TaskCategory,
     priority: TaskPriority,
+    scheduledDate: string,
   ) => Promise<boolean>;
   toggleTask: (task: Task) => Promise<boolean>;
   removeTask: (task: Task) => Promise<boolean>;
@@ -96,6 +97,7 @@ export function useTasks(userId?: string): TaskState {
     title: string,
     category: TaskCategory,
     priority: TaskPriority,
+    scheduledDate: string,
   ) {
     const cleanTitle = title.trim();
 
@@ -103,7 +105,12 @@ export function useTasks(userId?: string): TaskState {
 
     setError(null);
     setIsMutating(true);
-    const optimisticTask = createLocalTask(cleanTitle, category, priority);
+    const optimisticTask = createLocalTask(
+      cleanTitle,
+      category,
+      priority,
+      scheduledDate,
+    );
     commit((current) => [optimisticTask, ...current]);
 
     try {
@@ -113,6 +120,7 @@ export function useTasks(userId?: string): TaskState {
           cleanTitle,
           category,
           priority,
+          scheduledDate,
         );
         commit((current) =>
           current.map((task) =>

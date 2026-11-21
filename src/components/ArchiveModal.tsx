@@ -561,12 +561,18 @@ const styles = StyleSheet.create({
   },
   archiveColumns: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
+    alignItems: 'stretch',
+    gap: 12,
   },
   archiveGroup: {
     flex: 1,
-    marginBottom: 19,
+    minHeight: 280,
+    marginBottom: 4,
+    padding: 12,
+    borderRadius: radii.lg,
+    backgroundColor: 'rgba(255, 252, 246, 0.62)',
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   groupHeader: {
     minHeight: 34,

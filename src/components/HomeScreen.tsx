@@ -19,6 +19,7 @@ import {
 import { useArchives } from '../hooks/useArchives';
 import { useFocusSessions } from '../hooks/useFocusSessions';
 import { useMotivation } from '../hooks/useMotivation';
+import { useTaskComposerPreference } from '../hooks/useTaskComposerPreference';
 import type { TaskState } from '../hooks/useTasks';
 import type { AuthUser } from '../lib/supabase';
 import {
@@ -27,6 +28,7 @@ import {
   getLocalDateKey,
   getTaskStats,
   getTodayLabel,
+  getUpcomingDays,
   PRIORITY_META,
   sortTasks,
 } from '../taskUtils';
@@ -35,9 +37,11 @@ import {
   ACTIVE_TASK_CATEGORIES,
   type Task,
   type TaskCategory,
+  type TaskPriority,
 } from '../types';
 import { ArchiveModal } from './ArchiveModal';
 import { ConfirmDialog } from './ConfirmDialog';
+import { DateRail } from './DateRail';
 import { FocusHistoryModal } from './FocusHistoryModal';
 import { MotivationModal } from './MotivationModal';
 import { ProgressDial } from './ProgressDial';
@@ -72,6 +76,7 @@ export function HomeScreen({
   const archiveState = useArchives(user?.id);
   const focusState = useFocusSessions(user?.id);
   const motivationState = useMotivation(user?.id);
+  const composerPreference = useTaskComposerPreference(user?.id, 'today');
   const [activeSection, setActiveSection] = useState<MainSection>('energy');
   const [activeCategory, setActiveCategory] =
     useState<TaskCategory>('today');
@@ -82,9 +87,16 @@ export function HomeScreen({
   const [deleteCandidate, setDeleteCandidate] = useState<Task | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [todayKey, setTodayKey] = useState(getLocalDateKey());
+  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const dayOptions = useMemo(
+    () => getUpcomingDays(10, new Date(`${todayKey}T12:00:00`)),
+    [todayKey],
+  );
+  const isTodayView = selectedDate === todayKey;
   const todayTasks = taskState.tasks.filter(
     (task) =>
       task.category === 'today' &&
+      task.scheduledDate <= todayKey &&
       (!task.isCompleted ||
         (task.completedAt && getLocalDateKey(task.completedAt) === todayKey)),
   );
@@ -94,6 +106,10 @@ export function HomeScreen({
       sortTasks(
         taskState.tasks.filter((task) => {
           if (task.category !== activeCategory) return false;
+          const scheduledForView = isTodayView
+            ? task.scheduledDate <= todayKey
+            : task.scheduledDate === selectedDate;
+          if (!scheduledForView) return false;
           if (activeCategory === 'today') {
             return (
               !task.isCompleted ||
@@ -106,7 +122,7 @@ export function HomeScreen({
           return !task.isCompleted;
         }),
       ),
-    [activeCategory, taskState.tasks, todayKey],
+    [activeCategory, isTodayView, selectedDate, taskState.tasks, todayKey],
   );
   const pendingTasks = visibleTasks.filter((task) => !task.isCompleted);
   const completedTasks = visibleTasks.filter((task) => task.isCompleted);
@@ -148,8 +164,20 @@ export function HomeScreen({
   const displayName = getDisplayName(user?.email);
   const avatarLetter = (displayName[0] ?? '我').toUpperCase();
   const allPendingCount = taskState.tasks.filter(
-    (task) => !task.isCompleted,
+    (task) => !task.isCompleted && task.scheduledDate <= todayKey,
   ).length;
+  const dateCounts = Object.fromEntries(
+    dayOptions.map((day) => [
+      day.key,
+      taskState.tasks.filter(
+        (task) =>
+          !task.isCompleted &&
+          (day.key === todayKey
+            ? task.scheduledDate <= todayKey
+            : task.scheduledDate === day.key),
+      ).length,
+    ]),
+  );
 
   function confirmDelete(task: Task) {
     setDeleteCandidate(task);
@@ -162,6 +190,33 @@ export function HomeScreen({
     if (removed && task.isCompleted && task.completedAt) {
       await archiveState.unrecordCompletedTask(task, task.completedAt);
     }
+  }
+
+  function openComposer() {
+    setComposerVisible(true);
+  }
+
+  async function addTask(
+    title: string,
+    category: TaskCategory,
+    priority: TaskPriority,
+    scheduledDate: string,
+  ) {
+    const saved = await taskState.addTask(
+      title,
+      category,
+      priority,
+      scheduledDate,
+    );
+
+    if (saved) {
+      await composerPreference.setPreferredCategory(category);
+      setActiveCategory(category);
+      setSelectedDate(scheduledDate);
+      setShowCompleted(false);
+    }
+
+    return saved;
   }
 
   function openAccountMenu() {
@@ -229,6 +284,12 @@ export function HomeScreen({
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (!dayOptions.some((day) => day.key === selectedDate)) {
+      setSelectedDate(todayKey);
+    }
+  }, [dayOptions, selectedDate, todayKey]);
+
   const listHeader = (
     <View>
       <View style={styles.topActions}>
@@ -294,7 +355,7 @@ export function HomeScreen({
         </Text>
       </View>
 
-      {activeCategory === 'today' ? (
+      {activeCategory === 'today' && isTodayView ? (
         <LinearGradient
           colors={['#354950', '#52666B']}
           start={{ x: 0, y: 0 }}
@@ -313,15 +374,34 @@ export function HomeScreen({
       ) : (
         <View style={styles.reflectionCard}>
           <View style={styles.reflectionIcon}>
-            <Ionicons name="infinite-outline" size={22} color="#E8E0CB" />
+            <Ionicons
+              name={
+                activeCategory === 'today'
+                  ? 'calendar-outline'
+                  : 'infinite-outline'
+              }
+              size={22}
+              color="#E8E0CB"
+            />
           </View>
           <View style={styles.reflectionCopy}>
-            <Text style={styles.reflectionEyebrow}>遐筹 · LONG VIEW</Text>
+            <Text style={styles.reflectionEyebrow}>
+              {activeCategory === 'today'
+                ? `朝计 · ${
+                    dayOptions.find((day) => day.key === selectedDate)
+                      ?.shortDate ?? ''
+                  }`
+                : '遐筹 · LONG VIEW'}
+            </Text>
             <Text style={styles.reflectionTitle}>
-              不急着完成，但始终向前。
+              {activeCategory === 'today'
+                ? '提前安排，不让未来的自己匆忙。'
+                : '不急着完成，但始终向前。'}
             </Text>
             <Text style={styles.reflectionHint}>
-              {pendingTasks.length} 项遐筹正在蓄势
+              {activeCategory === 'today'
+                ? `${pendingTasks.length} 项任务已进入这一天`
+                : `${pendingTasks.length} 项遐筹正在蓄势`}
             </Text>
           </View>
         </View>
@@ -331,7 +411,12 @@ export function HomeScreen({
         {ACTIVE_TASK_CATEGORIES.map((key) => {
           const meta = CATEGORY_META[key];
           const categoryTasks = taskState.tasks.filter(
-            (task) => task.category === key,
+            (task) =>
+              task.category === key &&
+              !task.isCompleted &&
+              (isTodayView
+                ? task.scheduledDate <= todayKey
+                : task.scheduledDate === selectedDate),
           );
           const categoryStats = getTaskStats(categoryTasks);
           const isActive = activeCategory === key;
@@ -375,6 +460,16 @@ export function HomeScreen({
         })}
       </View>
 
+      <DateRail
+        days={dayOptions}
+        selectedDate={selectedDate}
+        counts={dateCounts}
+        onSelect={(date) => {
+          setSelectedDate(date);
+          setShowCompleted(false);
+        }}
+      />
+
       <View style={styles.todoTools}>
         <Ionicons
           name="sparkles-outline"
@@ -412,13 +507,19 @@ export function HomeScreen({
         <View>
           <Text style={styles.listTitle}>
             {activeCategory === 'today'
-              ? 'Lead the day.'
+              ? isTodayView
+                ? 'Lead the day.'
+                : 'Plan ahead, gently.'
               : 'Think beyond today.'}
           </Text>
           <Text style={styles.listDescription}>
-            {activeCategory === 'today'
-              ? '先完成 Primary，再让其余事情各归其位。'
-              : '让重要而不紧急的事，慢慢生长。'}
+            {isTodayView
+              ? activeCategory === 'today'
+                ? '先完成 Primary，再让其余事情各归其位。'
+                : '让重要而不紧急的事，慢慢生长。'
+              : `${
+                  dayOptions.find((day) => day.key === selectedDate)?.fullLabel
+                } · 提前看见，按时发生。`}
           </Text>
         </View>
         <Text style={styles.listCount}>
@@ -567,7 +668,7 @@ export function HomeScreen({
                 }
                 ListFooterComponent={
                   <View>
-                    {activeCategory === 'today' ? (
+                    {activeCategory === 'today' && isTodayView ? (
                       <View style={styles.completedSection}>
                         <Pressable
                           accessibilityRole="button"
@@ -637,7 +738,7 @@ export function HomeScreen({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="添加待办"
-              onPress={() => setComposerVisible(true)}
+              onPress={openComposer}
               style={({ pressed }) => [
                 styles.addButton,
                 pressed && styles.addButtonPressed,
@@ -699,7 +800,7 @@ export function HomeScreen({
                 activeSection === 'energy' && styles.navLabelActive,
               ]}
             >
-              朝计
+              谋篇
             </Text>
           </Pressable>
 
@@ -731,7 +832,7 @@ export function HomeScreen({
                 activeSection === 'records' && styles.navLabelActive,
               ]}
             >
-              记录
+              时笺
             </Text>
           </Pressable>
         </View>
@@ -739,10 +840,14 @@ export function HomeScreen({
 
       <TaskComposer
         visible={composerVisible}
-        initialCategory={activeCategory}
+        initialCategory={composerPreference.preferredCategory}
+        initialDate={selectedDate}
         isSubmitting={taskState.isMutating}
         onClose={() => setComposerVisible(false)}
-        onSubmit={taskState.addTask}
+        onCategoryChange={(category) =>
+          void composerPreference.setPreferredCategory(category)
+        }
+        onSubmit={addTask}
       />
 
       <ArchiveModal

@@ -41,7 +41,7 @@ export async function fetchRemoteTasks(userId: string): Promise<Task[]> {
   const { data, error } = await client
     .from('tasks')
     .select(
-      'id,user_id,title,category,priority,is_completed,created_at,completed_at,updated_at',
+      'id,user_id,title,category,priority,scheduled_date,is_completed,created_at,completed_at,updated_at',
     )
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
@@ -64,6 +64,7 @@ export async function migrateGuestTasks(userId: string): Promise<Task[]> {
     title: task.title,
     category: task.category,
     priority: task.priority,
+    scheduled_date: task.scheduledDate,
     is_completed: task.isCompleted,
     created_at: task.createdAt,
     completed_at: task.completedAt,
@@ -83,6 +84,7 @@ export async function insertRemoteTask(
   title: string,
   category: TaskCategory,
   priority: TaskPriority,
+  scheduledDate: string,
 ): Promise<Task> {
   const client = getSupabase();
   const { data, error } = await client
@@ -92,9 +94,10 @@ export async function insertRemoteTask(
       title,
       category,
       priority,
+      scheduled_date: scheduledDate,
     })
     .select(
-      'id,user_id,title,category,priority,is_completed,created_at,completed_at,updated_at',
+      'id,user_id,title,category,priority,scheduled_date,is_completed,created_at,completed_at,updated_at',
     )
     .single();
 
@@ -113,6 +116,7 @@ export async function updateRemoteTask(
       title: task.title,
       category: task.category,
       priority: task.priority,
+      scheduled_date: task.scheduledDate,
       is_completed: task.isCompleted,
       completed_at: task.completedAt,
       updated_at: new Date().toISOString(),
@@ -120,7 +124,7 @@ export async function updateRemoteTask(
     .eq('id', task.id)
     .eq('user_id', userId)
     .select(
-      'id,user_id,title,category,priority,is_completed,created_at,completed_at,updated_at',
+      'id,user_id,title,category,priority,scheduled_date,is_completed,created_at,completed_at,updated_at',
     )
     .single();
 

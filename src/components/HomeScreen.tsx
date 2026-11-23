@@ -245,7 +245,10 @@ export function HomeScreen({
 
   function openComposer(
     date = todayKey,
-    category: TaskCategory = activeCategory,
+    category: TaskCategory =
+      activeCategory === 'longTerm'
+        ? 'longTerm'
+        : composerPreference.preferredCategory,
   ) {
     setComposerDate(date);
     setComposerCategory(category);
@@ -285,7 +288,14 @@ export function HomeScreen({
     if (!user) {
       Alert.alert(
         '本地模式',
-        '当前任务只保存在这台手机上。配置登录服务后，可从登录页连接账号并跨设备同步。',
+        '当前任务只保存在这台设备上。你可以继续使用，也可以前往登录页连接账号并跨设备同步。',
+        [
+          { text: '继续使用', style: 'cancel' },
+          {
+            text: '前往登录',
+            onPress: onSignOut,
+          },
+        ],
       );
       return;
     }
@@ -1032,6 +1042,10 @@ export function HomeScreen({
         onAddTask={() => {
           setDayPreviewVisible(false);
           openComposer(planningDate, 'today');
+        }}
+        onDeleteTask={(task) => {
+          setDayPreviewVisible(false);
+          confirmDelete(task);
         }}
       />
 

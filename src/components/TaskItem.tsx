@@ -34,9 +34,7 @@ export function TaskItem({
   const markerColor =
     task.category === 'today' ? priorityMeta.color : meta.color;
   const categoryLabel =
-    task.category === 'today'
-      ? `${meta.label} · ${priorityMeta.label}`
-      : meta.label;
+    task.category === 'today' ? priorityMeta.label : meta.label;
 
   return (
     <View style={[styles.container, task.isCompleted && styles.completedContainer]}>
@@ -81,8 +79,6 @@ export function TaskItem({
               ]}
             />
             <Text style={styles.categoryLabel}>{categoryLabel}</Text>
-            <Text style={styles.metaDivider}>·</Text>
-            <Text style={styles.categoryHint}>已完成</Text>
           </View>
         ) : task.category === 'longTerm' ? (
           <View style={styles.longTermDetails}>
@@ -166,6 +162,8 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
   },
   completedContainer: {
+    minHeight: 52,
+    paddingVertical: 7,
     backgroundColor: 'rgba(255,252,246,0.56)',
   },
   checkButton: {
@@ -207,14 +205,6 @@ const styles = StyleSheet.create({
     color: colors.inkSoft,
     fontSize: 10,
     fontWeight: '700',
-  },
-  metaDivider: {
-    color: colors.inkFaint,
-    fontSize: 10,
-  },
-  categoryHint: {
-    color: colors.inkFaint,
-    fontSize: 10,
   },
   creationTime: {
     color: colors.inkFaint,

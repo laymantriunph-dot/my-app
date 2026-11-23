@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CATEGORY_META,
   getLocalDateKey,
+  getUpcomingDays,
   normalizeLongTermCategory,
   PRIORITY_META,
 } from '../taskUtils';
@@ -64,11 +65,19 @@ export function TaskComposer({
   const [scheduledDate, setScheduledDate] = useState(initialDate);
   const [longTermCategory, setLongTermCategory] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const selectedCalendarDate = new Date(`${scheduledDate}T12:00:00`);
   const selectedDateLabel = new Intl.DateTimeFormat('zh-CN', {
     month: 'long',
     day: 'numeric',
     weekday: 'short',
-  }).format(new Date(`${scheduledDate}T12:00:00`));
+  }).format(selectedCalendarDate);
+  const customDateLabel = `${
+    selectedCalendarDate.getMonth() + 1
+  }/${selectedCalendarDate.getDate()}`;
+  const quickDates = getUpcomingDays(3);
+  const isCustomDate = !quickDates.some(
+    (day) => day.key === scheduledDate,
+  );
 
   useEffect(() => {
     if (visible) {
@@ -305,33 +314,73 @@ export function TaskComposer({
             <View style={styles.scheduleHeading}>
               <Text style={styles.scheduleLabel}>安排日期</Text>
               <Text style={styles.scheduleHint}>
-                到这一天才会进入清单与进度
+                {selectedDateLabel}
               </Text>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setShowDatePicker(true)}
-              style={styles.scheduleButton}
-            >
-              <View style={styles.scheduleButtonIcon}>
+            <View style={styles.quickDateRow}>
+              {quickDates.map((day) => {
+                const isSelected = scheduledDate === day.key;
+
+                return (
+                  <Pressable
+                    key={day.key}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`安排到${day.fullLabel}`}
+                    accessibilityState={{ selected: isSelected }}
+                    onPress={() => setScheduledDate(day.key)}
+                    style={[
+                      styles.quickDateButton,
+                      isSelected && styles.quickDateButtonSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.quickDateLabel,
+                        isSelected && styles.quickDateLabelSelected,
+                      ]}
+                    >
+                      {day.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.quickDateValue,
+                        isSelected && styles.quickDateValueSelected,
+                      ]}
+                    >
+                      {day.shortDate}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="选择其他日期"
+                onPress={() => setShowDatePicker(true)}
+                style={[
+                  styles.quickDateButton,
+                  isCustomDate && styles.quickDateButtonSelected,
+                ]}
+              >
                 <Ionicons
                   name="calendar-outline"
-                  size={18}
-                  color={colors.longTerm}
+                  size={16}
+                  color={isCustomDate ? colors.white : colors.longTerm}
                 />
-              </View>
-              <View style={styles.scheduleButtonCopy}>
-                <Text style={styles.scheduleButtonTitle}>
-                  {scheduledDate === getLocalDateKey()
-                    ? '今天'
-                    : selectedDateLabel}
+                <Text
+                  style={[
+                    styles.quickDateCustom,
+                    isCustomDate && styles.quickDateLabelSelected,
+                  ]}
+                >
+                  {isCustomDate
+                    ? customDateLabel
+                    : '更多'}
                 </Text>
-                <Text style={styles.scheduleButtonHint}>
-                  点击修改安排日期
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
-            </Pressable>
+              </Pressable>
+            </View>
+            <Text style={styles.scheduleFootnote}>
+              到 {selectedDateLabel} 自动进入当天清单与进度
+            </Text>
             </View>
           ) : null}
 
@@ -589,36 +638,52 @@ const styles = StyleSheet.create({
     color: colors.inkFaint,
     fontSize: 8,
   },
-  scheduleButton: {
-    minHeight: 54,
+  quickDateRow: {
     marginTop: 8,
-    paddingHorizontal: 11,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    borderRadius: 13,
-    backgroundColor: colors.surfaceMuted,
+    gap: 7,
   },
-  scheduleButtonIcon: {
-    width: 31,
-    height: 31,
+  quickDateButton: {
+    flex: 1,
+    minHeight: 54,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
+    gap: 3,
+    borderRadius: 13,
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
-  scheduleButtonCopy: {
-    flex: 1,
+  quickDateButtonSelected: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
   },
-  scheduleButtonTitle: {
+  quickDateLabel: {
+    color: colors.inkSoft,
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  quickDateLabelSelected: {
+    color: '#E9E1CD',
+  },
+  quickDateValue: {
     color: colors.ink,
     fontSize: 11,
     fontWeight: '800',
   },
-  scheduleButtonHint: {
-    marginTop: 3,
+  quickDateValueSelected: {
+    color: colors.white,
+  },
+  quickDateCustom: {
+    color: colors.longTerm,
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  scheduleFootnote: {
+    marginTop: 7,
     color: colors.inkFaint,
     fontSize: 8,
+    textAlign: 'right',
   },
   dayRail: {
     gap: 7,

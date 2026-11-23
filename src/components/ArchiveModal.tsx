@@ -56,6 +56,7 @@ function ArchiveTaskCard({
   const priorityMeta = PRIORITY_META[task.priority];
   const markerColor =
     task.category === 'today' ? priorityMeta.color : meta.color;
+  const completedAt = task.completedAt ?? archivedAt;
 
   return (
     <Pressable
@@ -100,7 +101,7 @@ function ArchiveTaskCard({
           </View>
         ) : null}
         <Text style={styles.archiveMetaDate}>
-          {formatArchiveDate(archivedAt)}
+          {formatArchiveDate(completedAt)}
         </Text>
       </View>
     </Pressable>

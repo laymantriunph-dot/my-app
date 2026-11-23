@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,13 +10,43 @@ import { useAuth } from './src/hooks/useAuth';
 import { useTasks } from './src/hooks/useTasks';
 import { colors } from './src/theme';
 
+const LOCAL_MODE_KEY = '@sanfen/auth/local-mode';
+
 function AppContent() {
   const auth = useAuth();
   const [isLocalMode, setIsLocalMode] = useState(false);
+  const [isLocalPreferenceReady, setIsLocalPreferenceReady] = useState(false);
   const userId = auth.session?.user.id;
   const taskState = useTasks(userId);
 
-  if (auth.isLoading) {
+  useEffect(() => {
+    let active = true;
+
+    AsyncStorage.getItem(LOCAL_MODE_KEY)
+      .then((value) => {
+        if (active) setIsLocalMode(value === 'true');
+      })
+      .finally(() => {
+        if (active) setIsLocalPreferenceReady(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function startLocalMode() {
+    setIsLocalMode(true);
+    await AsyncStorage.setItem(LOCAL_MODE_KEY, 'true');
+  }
+
+  async function signOut() {
+    await AsyncStorage.removeItem(LOCAL_MODE_KEY);
+    setIsLocalMode(false);
+    await auth.signOut();
+  }
+
+  if (auth.isLoading || !isLocalPreferenceReady) {
     return (
       <View style={styles.loadingScreen}>
         <View style={styles.loadingMark}>
@@ -29,7 +60,7 @@ function AppContent() {
 
   if (!auth.session && !isLocalMode) {
     return (
-      <LoginScreen auth={auth} onStartLocal={() => setIsLocalMode(true)} />
+      <LoginScreen auth={auth} onStartLocal={() => void startLocalMode()} />
     );
   }
 
@@ -38,7 +69,7 @@ function AppContent() {
       user={auth.session?.user ?? null}
       isLocal={!auth.session}
       taskState={taskState}
-      onSignOut={() => void auth.signOut()}
+      onSignOut={() => void signOut()}
     />
   );
 }

@@ -24,6 +24,7 @@ type DayPreviewModalProps = {
   tasks: Task[];
   onClose: () => void;
   onAddTask: () => void;
+  onDeleteTask: (task: Task) => void;
 };
 
 export function DayPreviewModal({
@@ -32,6 +33,7 @@ export function DayPreviewModal({
   tasks,
   onClose,
   onAddTask,
+  onDeleteTask,
 }: DayPreviewModalProps) {
   const insets = useSafeAreaInsets();
   const todayKey = getLocalDateKey();
@@ -142,6 +144,22 @@ export function DayPreviewModal({
                           : meta.label}
                       </Text>
                     </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`泯迹 ${task.title}`}
+                      hitSlop={6}
+                      onPress={() => onDeleteTask(task)}
+                      style={({ pressed }) => [
+                        styles.taskDelete,
+                        pressed && styles.taskDeletePressed,
+                      ]}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={16}
+                        color={colors.inkFaint}
+                      />
+                    </Pressable>
                   </View>
                 );
               })
@@ -284,6 +302,16 @@ const styles = StyleSheet.create({
     marginTop: 3,
     color: colors.inkFaint,
     fontSize: 8,
+  },
+  taskDelete: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  taskDeletePressed: {
+    backgroundColor: colors.surfaceMuted,
   },
   addButton: {
     height: 48,
